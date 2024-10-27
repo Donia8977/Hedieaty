@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-
-
 // void main() {
 //   runApp(MaterialApp(
 //     initialRoute: '/',
@@ -18,7 +16,7 @@ import 'package:flutter/material.dart';
 class Event {
   final String name;
   final String category;
-  final String status; // Upcoming, Current, Past
+  final String status;
   Event({required this.name, required this.category, required this.status});
 }
 
@@ -38,11 +36,128 @@ class _EventListPageState extends State<EventListPage> {
   String _sortOption = 'Name'; // Default sorting by Name
 
   void _addEvent() {
-    // Navigate to an event creation screen or open a dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String name = '';
+        String category = '';
+        String status = '';
+
+        return AlertDialog(
+          title: Text('Add Event'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: InputDecoration(labelText: 'Name'),
+                onChanged: (value) {
+                  name = value;
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(labelText: 'Category'),
+                onChanged: (value) {
+                  category = value;
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(labelText: 'Status'),
+                onChanged: (value) {
+                  status = value;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (name.isNotEmpty &&
+                    category.isNotEmpty &&
+                    status.isNotEmpty) {
+                  setState(() {
+                    events.add(
+                        Event(name: name, category: category, status: status));
+                  });
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _editEvent(int index) {
-    // Edit event details by index
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          final Event event = events[index];
+          String name = event.name;
+          String category = event.category;
+          String status = event.status;
+
+          return AlertDialog(
+            title: Text('Edit Event'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'Name'),
+                  onChanged: (value) {
+                    name = value;
+                  },
+                  initialValue: event.name,
+                ),
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'Category'),
+                  onChanged: (value) {
+                    category = value;
+                  },
+                  initialValue: event.category,
+                ),
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'Status'),
+                  onChanged: (value) {
+                    status = value;
+                  },
+                  initialValue: event.status,
+                ),
+              ],
+            ),
+
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (name.isNotEmpty &&
+                      category.isNotEmpty &&
+                      status.isNotEmpty) {
+                    setState(() {
+                      events[index] = Event(name: name, category: category, status: status);
+                    });
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Text('Okay'),
+              ),
+            ],
+
+
+          );
+        });
   }
 
   void _deleteEvent(int index) {
@@ -71,7 +186,8 @@ class _EventListPageState extends State<EventListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Event List'),
+        backgroundColor: Color(0XFF996CF3),
+        title: Text('Event List', style: TextStyle(color: Colors.white)),
         actions: [
           DropdownButton<String>(
             value: _sortOption,
@@ -89,7 +205,28 @@ class _EventListPageState extends State<EventListPage> {
               );
             }).toList(),
           ),
+
+          PopupMenuButton<String>(
+            color: Color(0XFF996CF3),
+            onSelected: (String route) => Navigator.pushNamed(context, route),
+            itemBuilder: (context) => [
+              _buildMenuItem('Home', '/'),
+              _buildMenuItem('Event List', '/eventList'),
+              _buildMenuItem('Gift List', '/giftList'),
+              _buildMenuItem('Gift Details', '/giftDetails'),
+              _buildMenuItem('Profile', '/profile'),
+              _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
+            ],
+          ),
+
+
+
+
         ],
+
+
+
+
       ),
       body: ListView.builder(
         itemCount: events.length,
@@ -122,4 +259,14 @@ class _EventListPageState extends State<EventListPage> {
       ),
     );
   }
+}
+
+PopupMenuItem<String> _buildMenuItem(String text, String route) {
+  return PopupMenuItem(
+    value: route,
+    child: Text(
+      text,
+      style: TextStyle(color: Colors.white, fontSize: 15),
+    ),
+  );
 }

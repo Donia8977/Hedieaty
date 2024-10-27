@@ -1,66 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/user_provider.dart';
 import 'ui/eventlistpage.dart';
+import 'ui/profile.dart';
+import 'ui/pledgedgifts.dart';
+import 'ui/giftList.dart';
+import 'ui/giftDetails.dart';
 
 void main() {
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: HomePage(),
-    title: 'Hedieaty',
-    routes: {
-      '/eventList': (context) => EventListPage(),
-      '/giftList': (context) => GiftListPage(),
-      '/giftDetails': (context) => GiftDetailsPage(),
-      '/profile': (context) => ProfilePage(),
-      '/pledgedGifts': (context) => MyPledgedGiftsPage(),
-    },
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => UserProvider()),
+    ],
+    child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+      title: 'Hedieaty',
+      routes: {
+        '/eventList': (context) => EventListPage(),
+        '/giftList': (context) => GiftListPage(),
+        '/giftDetails': (context) => GiftDetailsPage(),
+        '/profile': (context) => ProfilePage(),
+        '/pledgedGifts': (context) => MyPledgedGiftsPage(),
+      },
+    ),
   ));
 }
 
-class EventListPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Event List')),
-        body: Center(
-            child: Text('Event List Page')));
-  }
-}
 
-class GiftListPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Gift List')),
-        body: Center(child: Text('Gift List Page')));
-  }
-}
-
-class GiftDetailsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Gift Details')),
-        body: Center(child: Text('Gift Details Page')));
-  }
-}
-
-class ProfilePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Profile')),
-        body: Center(child: Text('Profile Page')));
-  }
-}
-
-class MyPledgedGiftsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('My Pledged Gifts')),
-        body: Center(child: Text('My Pledged Gifts Page')));
-  }
-}
 
 class HomePage extends StatefulWidget {
   @override
@@ -135,6 +102,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
 
       appBar: AppBar(
 
@@ -221,7 +189,7 @@ class _HomePageState extends State<HomePage> {
             );
           } else {
             final friend =
-                friends[index - 1]; // Adjust index to match the friends list
+                friends[index - 1];
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -282,7 +250,7 @@ class _HomePageState extends State<HomePage> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Add friends via contact list or phone number
+
         },
         child: Icon(Icons.person_add),
       ),
