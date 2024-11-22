@@ -6,6 +6,9 @@ import 'ui/profile.dart';
 import 'ui/pledgedgifts.dart';
 import 'ui/giftList.dart';
 import 'ui/giftDetails.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+
 
 void main() {
   runApp(MultiProvider(
@@ -35,6 +38,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+
 
   List<Friend> friends = [
     Friend(
@@ -99,6 +103,109 @@ class _HomePageState extends State<HomePage> {
 
   String searchQuery = "";
 
+  void _showManualAddDialog() {
+    String name = "";
+    String phone = "";
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Add Friend"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: InputDecoration(labelText: "Name"),
+              onChanged: (value) => name = value,
+            ),
+            TextField(
+              decoration: InputDecoration(labelText: "Phone Number"),
+              keyboardType: TextInputType.phone,
+              onChanged: (value) => phone = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            child: Text("Add"),
+            onPressed: () {
+              if (name.isNotEmpty && phone.isNotEmpty) {
+                setState(() {
+                  friends.add(Friend(
+                    name: name,
+                    profilePic: "images/default_avatar.png",
+                    upcomingEvents: 0,
+                  ));
+                });
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Please fill in all fields.")),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  void _selectContactFromList() async {
+    // Request permission
+    bool permissionGranted = await FlutterContacts.requestPermission();
+
+    if (permissionGranted) {
+      // Fetch contacts
+      List<Contact> contacts = await FlutterContacts.getContacts(withProperties: true);
+
+      // Show contacts in a dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Select Contact"),
+          content: Container(
+            width: double.maxFinite,
+            height: 300,
+            child: ListView.builder(
+              itemCount: contacts.length,
+              itemBuilder: (context, index) {
+                final contact = contacts[index];
+                return ListTile(
+                  title: Text(contact.displayName),
+                  subtitle: Text(contact.phones.isNotEmpty ? contact.phones.first.number : "No Phone"),
+                  onTap: () {
+                    if (contact.phones.isNotEmpty) {
+                      setState(() {
+                        friends.add(Friend(
+                          name: contact.displayName,
+                          profilePic: "images/default_avatar.png", // Default image
+                          upcomingEvents: 0,
+                        ));
+                      });
+                    }
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Contacts permission is required to access your contact list."),
+      ));
+    }
+  }
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,46 +223,7 @@ class _HomePageState extends State<HomePage> {
                   context: context, delegate: FriendSearchDelegate(friends));
             },
           ),
-          // PopupMenuButton<String>(
-          //
-          //   color: Color(0XFF996CF3),
-          //   onSelected: (String route) {
-          //     Navigator.pushNamed(context, '/eventList');
-          //   },
-          //   itemBuilder: (BuildContext context) => [
-          //     const PopupMenuItem(
-          //       value: '/',
-          //       child: Text('Home' ,
-          //         style: TextStyle(color: Colors.white),),
-          //
-          //     ),
-          //     const PopupMenuItem(
-          //       value: '/eventList',
-          //       child: Text('Event List' ,
-          //         style: TextStyle(color: Colors.white , fontSize: 15),),
-          //     ),
-          //     const PopupMenuItem(
-          //       value: '/giftList',
-          //       child: Text('Gift List' ,
-          //         style: TextStyle(color: Colors.white , fontSize: 15),),
-          //     ),
-          //     const PopupMenuItem(
-          //       value: '/giftDetails',
-          //       child: Text('Gift Details' ,
-          //         style: TextStyle(color: Colors.white , fontSize: 15),),
-          //     ),
-          //     const PopupMenuItem(
-          //       value: '/profile',
-          //       child: Text('Profile' ,
-          //         style: TextStyle(color: Colors.white , fontSize: 15),),
-          //     ),
-          //     const PopupMenuItem(
-          //       value: '/pledgedGifts',
-          //       child: Text('My Pledged Gifts' ,
-          //         style: TextStyle(color: Colors.white , fontSize: 15),),
-          //     ),
-          //   ],
-          // ),
+
 
           PopupMenuButton<String>(
             color: Color(0XFF996CF3),
@@ -182,6 +250,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.only(bottom: 16.0),
               child: ElevatedButton(
                 onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) =>  EventListPage() ),);
                   // Navigate to create new event or list page
                 },
                 child: Text("Create Your Own Event/List"),
@@ -202,6 +271,7 @@ class _HomePageState extends State<HomePage> {
                     : "No Upcoming Events"),
                 trailing: Icon(Icons.arrow_forward),
                 onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const GiftListPage()),);
                   // Navigate to friend's gift lists page
                 },
               ),
@@ -210,54 +280,65 @@ class _HomePageState extends State<HomePage> {
         },
       ),
 
-      // body: ListView(
-      //   scrollDirection : Axis.vertical,
-      //    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      //   children: [
-      //
-      //     Padding(
-      //       padding: const EdgeInsets.only(bottom: 16.0),
-      //       child: ElevatedButton(
-      //         onPressed: () {
-      //           // Navigate to create new event or list page
-      //         },
-      //         child: Text("Create Your Own Event/List"),
-      //       ),
-      //     ),
-      //
-      //     ...friends.map((friend) {
-      //       return Padding(
-      //         padding: const EdgeInsets.symmetric(vertical: 4.0),
-      //         child: ListTile(
-      //           leading: CircleAvatar(
-      //             backgroundImage: AssetImage(friend.profilePic),
-      //           ),
-      //           title: Text(friend.name),
-      //           subtitle: Text(friend.upcomingEvents > 0
-      //               ? "Upcoming Events: ${friend.upcomingEvents}"
-      //               : "No Upcoming Events"),
-      //           trailing: Icon(Icons.arrow_forward),
-      //           onTap: () {
-      //             // Navigate to friend's gift lists page
-      //           },
-      //         ),
-      //       );
-      //     }).toList(),
-      //   ],
-      //
-      //
-      // ),
+
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text("Add Friend"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.phone),
+                    title: Text("Add Manually"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showManualAddDialog();
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.contacts),
+                    title: Text("Select from Contacts"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _selectContactFromList();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
 
         },
         child: Icon(Icons.person_add),
       ),
 
+
+
+      
+      
+      
     );
+
+
+
   }
+
+
 }
+
+class _selectContactFromList {
+}
+
+class _showManualAddDialog {
+}
+
+
+
 
 PopupMenuItem<String> _buildMenuItem(String text, String route) {
   return PopupMenuItem(

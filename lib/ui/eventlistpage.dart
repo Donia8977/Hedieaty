@@ -1,18 +1,6 @@
 import 'package:flutter/material.dart';
 
-// void main() {
-//   runApp(MaterialApp(
-//     initialRoute: '/',
-//
-//     routes: {
-//       '/': (context) => HomePage(),         // Home Page route
-//       '/eventList': (context) => EventListPage(),  // Event List route
-//     },
-//     debugShowCheckedModeBanner: false,
-//   ));
-// }
 
-// Event Model
 class Event {
   final String name;
   final String category;
