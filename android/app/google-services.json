@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "566468015840",
+    "project_id": "hedieaty-firebase-a6acb",
+    "storage_bucket": "hedieaty-firebase-a6acb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566468015840:android:ef8d4ed582dbfda38e8285",
+        "android_client_info": {
+          "package_name": "com.example.hedieaty"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrdqr2lcTp4syFsbcemjlGnKKxneMbz2c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
