@@ -1,13 +1,18 @@
-class Event {
+import 'DatabaseHelper.dart';
 
-  final int? id;
+class AppEvent {
+
+  final String? id;
   final String name;
   final String date;
   final String? location;
   final String? description;
-  final int userId;
+  final String userId;
+  final String status;
+  final String category;
 
-  Event({this.id, required this.name, required this.date, this.location, this.description, required this.userId});
+  AppEvent({this.id, required this.name, required this.date, this.location, this.description,
+    required this.userId , required this.status , required this.category});
 
   Map<String, dynamic> toMap() {
     return {
@@ -17,19 +22,26 @@ class Event {
       'location': location,
       'description': description,
       'userId': userId,
+      'status': status,
+      'category' : category,
     };
   }
 
-  factory Event.fromMap(Map<String, dynamic> map) {
-    return Event(
+  factory AppEvent.fromMap(Map<String, dynamic> map) {
+    return AppEvent(
       id: map['id'],
       name: map['name'],
       date: map['date'],
       location: map['location'],
       description: map['description'],
       userId: map['userId'],
+      status: map['status'],
+      category: map['category'],
+
     );
   }
+
+
 
 
 

@@ -83,7 +83,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
           color: Color(0XFF996CF3),
           onSelected: (String route) => Navigator.pushNamed(context, route),
           itemBuilder: (context) => [
-            _buildMenuItem('Home', '/'),
+            _buildMenuItem('Home', '/home'),
             _buildMenuItem('Event List', '/eventList'),
             _buildMenuItem('Gift List', '/giftList'),
             _buildMenuItem('Gift Details', '/giftDetails'),
@@ -98,7 +98,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Name Input Field
             TextField(
               controller: nameController,
               decoration: InputDecoration(labelText: 'Gift Name'),
@@ -106,7 +105,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 10),
 
-            // Description Input Field
             TextField(
               controller: descriptionController,
               decoration: InputDecoration(labelText: 'Description'),
@@ -115,7 +113,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 10),
 
-            // Category Input Field
             TextField(
               controller: categoryController,
               decoration: InputDecoration(labelText: 'Category'),
@@ -123,7 +120,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 10),
 
-            // Price Input Field
             TextField(
               controller: priceController,
               decoration: InputDecoration(labelText: 'Price'),
@@ -132,7 +128,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 10),
 
-            // Image Upload
             Row(
               children: [
                 Text('Upload Image:'),
@@ -147,7 +142,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 20),
 
-            // Status Toggle (Available/Pledged)
             Row(
               children: [
                 Text('Status:'),
@@ -167,7 +161,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 20),
 
-            // Save/Update Button
             ElevatedButton(
               onPressed: _saveGift,
               child: Text(widget.gift == null ? 'Add Gift' : 'Update Gift'),

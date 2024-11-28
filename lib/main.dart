@@ -1,6 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'providers/user_provider.dart';
+import 'package:hedieaty/ui/sign_in.dart';
+import 'package:hedieaty/ui/sign_up.dart';
+// import 'package:provider/provider.dart';
+// import 'providers/user_provider.dart';
 import 'ui/eventlistpage.dart';
 import 'ui/profile.dart';
 import 'ui/pledgedgifts.dart';
@@ -8,28 +12,72 @@ import 'ui/giftList.dart';
 import 'ui/giftDetails.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'models/DatabaseHelper.dart';
+import 'models/Friend.dart';
+import 'models/User.dart' as app;
+import 'package:uuid/uuid.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
-  runApp(MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (_) => UserProvider()),
-    ],
-    child: MaterialApp(
+void main() async {
+
+  final uuid = Uuid();
+
+  final userId = uuid.v4();
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  final currentUser = app.User(
+    id: userId,
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    // Add other user fields as required.
+  );
+
+  runApp(
+
+    //   MultiProvider(
+    // providers: [
+    //   ChangeNotifierProvider(create: (_) => UserProvider()),
+    // ],
+     MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomePage(),
+
       title: 'Hedieaty',
+      initialRoute: '/home',
       routes: {
+        '/home': (context) => HomePage(),
+        '/sign_in': (context) => Sign_in(),
+        '/sign_up': (context) => Sign_up(),
         '/eventList': (context) => EventListPage(),
         '/giftList': (context) => GiftListPage(),
         '/giftDetails': (context) => GiftDetailsPage(),
-        '/profile': (context) => ProfilePage(),
+        '/profile': (context) => ProfilePage(user: currentUser),
+
+        // FutureBuilder<app.User>(
+        //   future: fetchCurrentUser(),
+        //   builder: (context, snapshot) {
+        //     if (snapshot.connectionState == ConnectionState.waiting) {
+        //       return Center(child: CircularProgressIndicator());
+        //     } else if (snapshot.hasError || !snapshot.hasData) {
+        //       return Center(child: Text("Error fetching user data"));
+        //     }
+        //     final currentUser = snapshot.data!;
+        //     return ProfilePage(user: currentUser);
+        //   },
+        // ),
         '/pledgedGifts': (context) => MyPledgedGiftsPage(),
       },
     ),
-  ));
-}
+  );
 
+
+}
 
 
 class HomePage extends StatefulWidget {
@@ -39,69 +87,40 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
+  final uuid = Uuid();
 
-  List<Friend> friends = [
-    Friend(
-        name: "John Doe",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 1),
-    Friend(
-        name: "Jane Smith",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 0),
-    Friend(
-        name: "Alex Johnson",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 2),
-    Friend(
-        name: "Alex Johnson",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 2),
-    Friend(
-        name: "Emily Davis",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 3),
-    Friend(
-        name: "Michael Brown",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 0),
-    Friend(
-        name: "Sophia Taylor",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 1),
-    Friend(
-        name: "David Wilson",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 0),
-    Friend(
-        name: "Olivia Martinez",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 2),
-    Friend(
-        name: "Liam Garcia",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 1),
-    Friend(
-        name: "Isabella Moore",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 0),
-    Friend(
-        name: "Lucas Thompson",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 1),
-    Friend(
-        name: "Ava White",
-        profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-        upcomingEvents: 4),
-    // Friend(name: "Mason Harris", profilePic: "assets/images/profile13.jpg", upcomingEvents: 2),
-    // Friend(name: "Charlotte Clark", profilePic: "assets/images/profile14.jpg", upcomingEvents: 0),
-    // Friend(name: "James Lewis", profilePic: "assets/images/profile15.jpg", upcomingEvents: 3),
-    // Friend(name: "Amelia Robinson", profilePic: "assets/images/profile16.jpg", upcomingEvents: 2),
-    // Friend(name: "Benjamin Young", profilePic: "assets/images/profile17.jpg", upcomingEvents: 0),
-    // Friend(name: "Mia Hernandez", profilePic: "assets/images/profile18.jpg", upcomingEvents: 1),
-  ];
+  @override
+  void initstate() {
+    super.initState();
+    FirebaseAuth.instance
+        .authStateChanges()
+        .listen((firebase.User? user) {
+      if (user == null) {
+        print('=========================User is currently signed out!');
+      } else {
+        print('============================User is signed in!');
+      }
+    });
+  }
 
-  String searchQuery = "";
+  List<Friend> friends = [];
+
+   DatabaseHelper _dbHelper = DatabaseHelper();
+
+  //String searchQuery = "";
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  Future<void> _loadFriends() async {
+    final loadedFriends = await DatabaseHelper.getFriends();
+    setState(() {
+      friends = loadedFriends;
+
+    });
+  }
 
   void _showManualAddDialog() {
     String name = "";
@@ -132,15 +151,24 @@ class _HomePageState extends State<HomePage> {
           ),
           ElevatedButton(
             child: Text("Add"),
-            onPressed: () {
+            onPressed: () async {
               if (name.isNotEmpty && phone.isNotEmpty) {
-                setState(() {
-                  friends.add(Friend(
-                    name: name,
-                    profilePic: "images/default_avatar.png",
-                    upcomingEvents: 0,
-                  ));
-                });
+                final userId = uuid.v4();
+                final friendId = uuid.v4();
+
+
+                final newFriend = Friend(
+                  userId: userId,
+                  friendId: friendId,
+                  name: name,
+                  profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
+                  upcomingEvents: 0,
+                );
+
+
+                await _dbHelper.insertFriend(newFriend);
+                _loadFriends();
+
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -156,14 +184,11 @@ class _HomePageState extends State<HomePage> {
 
 
   void _selectContactFromList() async {
-    // Request permission
     bool permissionGranted = await FlutterContacts.requestPermission();
 
     if (permissionGranted) {
-      // Fetch contacts
       List<Contact> contacts = await FlutterContacts.getContacts(withProperties: true);
 
-      // Show contacts in a dialog
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -178,15 +203,23 @@ class _HomePageState extends State<HomePage> {
                 return ListTile(
                   title: Text(contact.displayName),
                   subtitle: Text(contact.phones.isNotEmpty ? contact.phones.first.number : "No Phone"),
-                  onTap: () {
+                  onTap: () async {
                     if (contact.phones.isNotEmpty) {
-                      setState(() {
-                        friends.add(Friend(
-                          name: contact.displayName,
-                          profilePic: "images/default_avatar.png", // Default image
-                          upcomingEvents: 0,
-                        ));
-                      });
+
+                      final userId = uuid.v4();
+                      final friendId = uuid.v4();
+
+                      final newFriend = Friend(
+                        userId: userId,
+                        friendId: friendId,
+                        name: contact.displayName,
+                        profilePic: "images/3430601_avatar_female_normal_woman_icon.png", // Default image
+                        upcomingEvents: 0,
+                      );
+                      final dbHelper = DatabaseHelper();
+                      await dbHelper.insertFriend(newFriend);
+                      _loadFriends();
+
                     }
                     Navigator.pop(context);
                   },
@@ -319,9 +352,9 @@ class _HomePageState extends State<HomePage> {
 
 
 
-      
-      
-      
+
+
+
     );
 
 
@@ -350,16 +383,6 @@ PopupMenuItem<String> _buildMenuItem(String text, String route) {
   );
 }
 
-class Friend {
-  final String name;
-  final String profilePic;
-  final int upcomingEvents;
-
-  Friend(
-      {required this.name,
-      required this.profilePic,
-      required this.upcomingEvents});
-}
 
 class FriendSearchDelegate extends SearchDelegate {
   final List<Friend> friends;
@@ -403,6 +426,11 @@ class FriendSearchDelegate extends SearchDelegate {
       return friend.name.toLowerCase().contains(query.toLowerCase());
     }).toList();
 
+
+    if (filteredFriends.isEmpty) {
+      return Center(child: Text("No friends found."));
+    }
+
     return ListView.builder(
       itemCount: filteredFriends.length,
       itemBuilder: (context, index) {
@@ -422,5 +450,6 @@ class FriendSearchDelegate extends SearchDelegate {
         );
       },
     );
+
   }
 }

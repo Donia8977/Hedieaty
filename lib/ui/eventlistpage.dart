@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:hedieaty/models/Event.dart';
+import 'package:uuid/uuid.dart';
+import 'package:hedieaty/models/DatabaseHelper.dart';
 
 
-class Event {
-  final String name;
-  final String category;
-  final String status;
-  Event({required this.name, required this.category, required this.status});
-}
-
-// EventListPage
 class EventListPage extends StatefulWidget {
   @override
   _EventListPageState createState() => _EventListPageState();
 }
 
 class _EventListPageState extends State<EventListPage> {
-  List<Event> events = [
-    Event(name: 'Event A', category: 'Music', status: 'Upcoming'),
-    Event(name: 'Event B', category: 'Sports', status: 'Current'),
-    Event(name: 'Event C', category: 'Workshop', status: 'Past'),
-  ];
 
-  String _sortOption = 'Name'; // Default sorting by Name
+  final uuid = Uuid();
+
+
+  List<AppEvent> events = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    final fetchedEvents = await DatabaseHelper.getEvents();
+
+    setState(() {
+      events = fetchedEvents;
+    });
+  }
+
+  String _sortOption = 'Name';
 
   void _addEvent() {
     showDialog(
@@ -30,6 +39,8 @@ class _EventListPageState extends State<EventListPage> {
         String name = '';
         String category = '';
         String status = '';
+        String date = '';
+        String location = '';
 
         return AlertDialog(
           title: Text('Add Event'),
@@ -54,6 +65,22 @@ class _EventListPageState extends State<EventListPage> {
                   status = value;
                 },
               ),
+
+              TextField(
+                decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                onChanged: (value) {
+                  date = value;
+                },
+              ),
+
+              TextField(
+                decoration: InputDecoration(labelText: 'Location'),
+                onChanged: (value) {
+                  location = value;
+                },
+              ),
+
+
             ],
           ),
           actions: [
@@ -64,17 +91,28 @@ class _EventListPageState extends State<EventListPage> {
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                if (name.isNotEmpty &&
-                    category.isNotEmpty &&
-                    status.isNotEmpty) {
+
+              onPressed: () async {
+                if (name.isNotEmpty && category.isNotEmpty && status.isNotEmpty ) {
+                  final newEvent = AppEvent(
+                    id: DateTime.now().toString(),
+                    date: date,
+                    location: location,
+                    name: name,
+                    category: category,
+                    status: status,
+                    userId: uuid.v4(),
+                  );
+                  await DatabaseHelper().addEvents(newEvent);
+                  _loadEvents();
                   setState(() {
-                    events.add(
-                        Event(name: name, category: category, status: status));
+                    events.add(newEvent);
                   });
                   Navigator.of(context).pop();
                 }
               },
+
+
               child: Text('Add'),
             ),
           ],
@@ -87,10 +125,12 @@ class _EventListPageState extends State<EventListPage> {
     showDialog(
         context: context,
         builder: (BuildContext context) {
-          final Event event = events[index];
+          final AppEvent event = events[index];
           String name = event.name;
           String category = event.category;
           String status = event.status;
+          String? location = event.location;
+          String date = event.date;
 
           return AlertDialog(
             title: Text('Edit Event'),
@@ -118,24 +158,54 @@ class _EventListPageState extends State<EventListPage> {
                   },
                   initialValue: event.status,
                 ),
+
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'location'),
+                  onChanged: (value) {
+                    location = value;
+                  },
+                  initialValue: event.location,
+                ),
+
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                  onChanged: (value) {
+                    date = value;
+                  },
+                  initialValue: event.date,
+                ),
+
               ],
             ),
 
             actions: [
               TextButton(
                 onPressed: () {
+
                   Navigator.of(context).pop();
                 },
+                
                 child: Text('Cancel'),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   if (name.isNotEmpty &&
                       category.isNotEmpty &&
                       status.isNotEmpty) {
-                    setState(() {
-                      events[index] = Event(name: name, category: category, status: status);
-                    });
+
+                    final updatedEvent = AppEvent(
+                      id: event.id,
+                      name: name,
+                      category: category,
+                      status: status,
+                      location: location,
+                      date: date,
+                      userId: event.userId,
+                    );
+
+                   await DatabaseHelper().updateEvent(updatedEvent);
+                   await  _loadEvents();
+
                     Navigator.of(context).pop();
                   }
                 },
@@ -148,7 +218,12 @@ class _EventListPageState extends State<EventListPage> {
         });
   }
 
-  void _deleteEvent(int index) {
+  void _deleteEvent(int index) async {
+    final String? eventId = events[index].id;
+
+    await DatabaseHelper().deleteEvent(eventId!);
+    await _loadEvents();
+
     setState(() {
       events.removeAt(index);
     });
@@ -165,6 +240,12 @@ class _EventListPageState extends State<EventListPage> {
           break;
         case 'Status':
           events.sort((a, b) => a.status.compareTo(b.status));
+          break;
+        case 'Date':
+          events.sort((a, b) => a.date.compareTo(b.date));
+          break;
+        case 'Location':
+          events.sort((a, b) => (a.location ?? '').compareTo(b.location ?? ''));
           break;
       }
     });
@@ -185,7 +266,7 @@ class _EventListPageState extends State<EventListPage> {
                 _sortEvents();
               });
             },
-            items: <String>['Name', 'Category', 'Status']
+            items: <String>['Name', 'Category', 'Status' , 'Date', 'Location']
                 .map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -198,7 +279,7 @@ class _EventListPageState extends State<EventListPage> {
             color: Color(0XFF996CF3),
             onSelected: (String route) => Navigator.pushNamed(context, route),
             itemBuilder: (context) => [
-              _buildMenuItem('Home', '/'),
+              _buildMenuItem('Home', '/home'),
               _buildMenuItem('Event List', '/eventList'),
               _buildMenuItem('Gift List', '/giftList'),
               _buildMenuItem('Gift Details', '/giftDetails'),
@@ -223,7 +304,7 @@ class _EventListPageState extends State<EventListPage> {
           return Card(
             child: ListTile(
               title: Text(event.name),
-              subtitle: Text('${event.category} - ${event.status}'),
+              subtitle: Text('${event.category} - ${event.status} - ${event.date} - ${event.location ?? 'No location'}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

@@ -1,12 +1,14 @@
+import 'DatabaseHelper.dart';
+
 class Gift{
 
-  final int? id;
-  final String name;
+  final String? id;
+  late final String name;
   final String? description;
-  final String category;
+  late final String category;
   final double price;
-  final String status;
-  final int eventId;
+  late final String status;
+  final String eventId;
 
   Gift({this.id, required this.name, this.description, required this.category, required this.price, required this.status, required this.eventId});
 
@@ -33,6 +35,48 @@ class Gift{
       eventId: map['eventId'],
     );
   }
+
+
+
+  // Future<int> insertGifts(Gift gift) async{
+  //
+  //   final db = await DatabaseHelper().database;
+  //   return await db.insert('Gifts', gift.toMap());
+  //
+  // }
+  //
+  // Future<Gift?> getGiftById(int id) async {
+  //   final db = await DatabaseHelper().database;
+  //   final List<Map<String, dynamic>> maps = await db.query(
+  //     'Gifts',
+  //     where: 'id = ?',
+  //     whereArgs: [id],
+  //   );
+  //
+  //   if (maps.isNotEmpty) {
+  //     return Gift.fromMap(maps.first);
+  //   } else {
+  //     return null;
+  //   }
+  // }
+
+  //
+  // Future<int> updateEvents(Gift gift) async{
+  //
+  //   final db = await DatabaseHelper().database;
+  //   return await db.update('Gifts', gift.toMap(), where: 'id = ?', whereArgs: [gift.id]);
+  //
+  //
+  // }
+  //
+  // Future<int> deleteEvents(Gift gift) async {
+  //   final db = await DatabaseHelper().database;
+  //   return await db.delete('Gifts', where: 'id = ?', whereArgs: [id]);
+  // }
+
+
+
+
 
 
 

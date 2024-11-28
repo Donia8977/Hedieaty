@@ -22,7 +22,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
               color: Color(0XFF996CF3),
               onSelected: (String route) => Navigator.pushNamed(context, route),
               itemBuilder: (context) => [
-                _buildMenuItem('Home', '/'),
+                _buildMenuItem('Home', '/home'),
                 _buildMenuItem('Event List', '/eventList'),
                 _buildMenuItem('Gift List', '/giftList'),
                 _buildMenuItem('Gift Details', '/giftDetails'),
