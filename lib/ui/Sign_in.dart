@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'Auth.dart';
+import '../controllers/Auth.dart';
+import '../main.dart';
 
 class Sign_in extends StatefulWidget {
   const Sign_in({super.key});
@@ -69,6 +70,7 @@ class _Sign_inState extends State<Sign_in> {
                       onPressed: () async {
 
                         bool status = await myAuth.sign_in(Email.text, Password.text);
+                        await updateAppUser();
                         if(status == true){
                           Navigator.pushReplacementNamed(context, '/home');
                         }else{

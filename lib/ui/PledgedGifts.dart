@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
+import 'package:hedieaty/controllers/FireStoreHelper.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
+
+import '../models/Gift.dart';
 
 
 class MyPledgedGiftsPage extends StatefulWidget {
@@ -9,6 +14,17 @@ class MyPledgedGiftsPage extends StatefulWidget {
 }
 
 class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
+
+  List<Gift> gifts = [];
+  final FireStoreHelper fireStoreHelper = FireStoreHelper();
+  bool isLoading = true;
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   fetchGifts(widget.eventId);
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,10 +49,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
           ],
 
 
-        )
-
-
-
+        ),
 
 
 

@@ -1,4 +1,5 @@
-import 'DatabaseHelper.dart';
+import '../controllers/DatabaseHelper.dart';
+import 'package:sqflite/sqflite.dart';
 
 class Friend {
   final String userId;
@@ -29,55 +30,15 @@ class Friend {
       upcomingEvents: map['upcomingEvents'],
     );
   }
-
-
-  //
-  // static Future<List<Friend>> getFriends() async {
-  //   final db = await DatabaseHelper().database;
-  //   final List<Map<String, dynamic>> maps = await db.query('Friends');
-  //   return List.generate(maps.length, (i) => Friend.fromMap(maps[i]));
-  // }
-
-
-
-
-  // Future<int> insertFriends(Friend friend) async{
-  //
-  //   final db = await DatabaseHelper().database;
-  //   return await db.insert('Friends', friend.toMap());
-  //
-  // }
-  //
-  // Future<Friend?> getFriendById(int id) async {
-  //   final db = await DatabaseHelper().database;
-  //   final List<Map<String, dynamic>> maps = await db.query(
-  //     'Friends',
-  //     where: 'friendId = ?',
-  //     whereArgs: [id],
-  //   );
-  //
-  //   if (maps.isNotEmpty) {
-  //     return Friend.fromMap(maps.first);
-  //   } else {
-  //     return null;
-  //   }
-  // }
-  //
-  //
-  // Future<int> updateFriend(Friend friend) async{
-  //
-  //   final db = await DatabaseHelper().database;
-  //   return await db.update('Friends', friend.toMap(), where: 'friendId = ?', whereArgs: [friend.friendId]);
-  //
-  //
-  // }
-  //
-  // Future<int> deleteEvents(Friend friend) async {
-  //   final db = await DatabaseHelper().database;
-  //   return await db.delete('Friends', where: 'friendId = ?', whereArgs: [friendId]);
-  // }
-  //
-  //
+  factory Friend.fromFirestore(Map<String, dynamic> data) {
+    return Friend(
+      friendId: data['friendId'] as String,
+      name: data['name'] as String,
+      profilePic: data['profilePic'] as String? ?? 'images/3430601_avatar_female_normal_woman_icon.png',
+      upcomingEvents: data['upcomingEvents'] as int? ?? 0,
+      userId: '',
+    );
+  }
 
 
 

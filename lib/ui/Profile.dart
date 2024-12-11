@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/properties/event.dart';
 import 'package:hedieaty/models/Event.dart';
 import 'package:provider/provider.dart';
-import '../models/DatabaseHelper.dart';
+import '../controllers/DatabaseHelper.dart';
 import '../models/Gift.dart';
-import '../models/user_model.dart';
-import '../providers/user_provider.dart';
-import 'eventlistpage.dart';
-import 'pledgedgifts.dart';
-import '../models/User.dart';
+import 'EventListPage.dart';
+import 'PledgedGifts.dart';
+import '../models/AppUser.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class ProfilePage extends StatefulWidget {
 
-  final User user;
+  final AppUser user;
 
   const ProfilePage({super.key , required this.user});
 
@@ -22,30 +22,57 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
 
-  DatabaseHelper _dbHelper = DatabaseHelper();
+ // late final User? user;
 
-late final User currentUser;
+ // DatabaseHelper _dbHelper = DatabaseHelper();
+
+late AppUser currentUser;
 late Future<List<Gift>> pledgedGifts;
 late Future<List<AppEvent>> createdEvents;
+bool isLoading = true;
 
 @override
 void initState() {
   super.initState();
   currentUser = widget.user;
+  _fetchUserData();
 
-  pledgedGifts = DatabaseHelper.getPledgedGiftsByUserId(currentUser.id!);
-  createdEvents = DatabaseHelper.getEventsByUserId(currentUser.id!) ;
+  // pledgedGifts = DatabaseHelper.getPledgedGiftsByUserId(currentUser.id!);
+  // createdEvents = DatabaseHelper.getEventsByUserId(currentUser.id!) ;
 }
+
+  Future<void> _fetchUserData() async {
+
+  setState(() {
+    isLoading = true ;
+  });
+
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.id).get();
+
+      if (userDoc.exists) {
+        setState(() {
+          currentUser = AppUser.fromFirestore(userDoc);
+        });
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
+    }
+
+    finally{
+      setState(() {
+        isLoading = false;
+      });
+    }
+
+  }
 
 
 
 
   @override
   Widget build(BuildContext context) {
-    //
-    // final userProvider = Provider.of<UserProvider>(context);
-    // final user = userProvider.user;
-
 
     return Scaffold(
 
@@ -60,7 +87,6 @@ void initState() {
               itemBuilder: (context) => [
                 _buildMenuItem('Home', '/home'),
                 _buildMenuItem('Event List', '/eventList'),
-                _buildMenuItem('Gift List', '/giftList'),
                 _buildMenuItem('Gift Details', '/giftDetails'),
                 _buildMenuItem('Profile', '/profile'),
                 _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
@@ -73,7 +99,15 @@ void initState() {
 
 
 
-      body: Padding(
+      body: isLoading
+          ? Center(
+        child: LoadingAnimationWidget.inkDrop(
+          color: Color(0XFF996CF3),
+          size: 60,
+        ),
+      )
+
+       : Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,16 +123,17 @@ void initState() {
         ),
       ),
 
+
     );
   }
 
 
-  Widget _buildProfileInfo(User user, BuildContext context) {
+  Widget _buildProfileInfo(AppUser user, BuildContext context) {
     return Card(
       child: ListTile(
         leading: CircleAvatar(child: Icon(Icons.person)),
-        title: Text(user.name),
-        subtitle: Text(user.email),
+        title: Text(user.name ?? " No name "),
+        subtitle: Text(user.email ?? " No email"),
         trailing: IconButton(
           icon: Icon(Icons.edit),
           onPressed: () => _showEditProfileDialog(context),
@@ -109,7 +144,6 @@ void initState() {
 
 
   void _showEditProfileDialog(BuildContext context) {
-    //final userProvider = Provider.of<UserProvider>(context, listen: false);
     final nameController = TextEditingController(text: currentUser.name);
     final emailController = TextEditingController(text: currentUser.email);
 
@@ -131,20 +165,6 @@ void initState() {
           ],
         ),
         actions: [
-          // TextButton(
-          //   onPressed: () {
-          //     // userProvider.updateUser(
-          //     //   nameController.text,
-          //     //   emailController.text,
-          //     //   userProvider.user.notificationsEnabled,
-          //     // );
-          //
-          //     Navigator.pop(context);
-          //
-          //   },
-          //   child: Text("Save"),
-          // ),
-
 
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -157,7 +177,14 @@ void initState() {
               currentUser.name = nameController.text;
               currentUser.email = emailController.text;
             });
-            await _dbHelper.updateUesrs(currentUser);
+          //  await _dbHelper.updateUesrs(currentUser);
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.id)
+                .update({
+              'name': currentUser.name,
+              'email': currentUser.email,
+            });
             Navigator.pop(context);
 
           },
@@ -198,21 +225,25 @@ void initState() {
     );
   }
 
-  Widget _buildNotificationSettings(User user) {
+  Widget _buildNotificationSettings(AppUser user) {
     return SwitchListTile(
       title: Text("Notifications"),
       value:  user.notificationsEnabled,
       onChanged: (newValue) async {
-        // userProvider.updateUser(
-        //   userProvider.user.name,
-        //   userProvider.user.email,
-        //   newValue,
-        // );
+
         setState(() {
           user.notificationsEnabled = newValue;
         });
 
-        await _dbHelper.updateUesrs(user);
+       // await _dbHelper.updateUesrs(user);
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.id)
+            .update({
+          'name': currentUser.name,
+          'email': currentUser.email,
+        });
       },
     );
   }

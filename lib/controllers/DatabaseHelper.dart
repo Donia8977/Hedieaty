@@ -1,14 +1,14 @@
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:hedieaty/models/Friend.dart';
-import 'package:hedieaty/models/User.dart';
+import 'package:hedieaty/models/AppUser.dart';
 import 'package:hedieaty/models/Event.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 import '../main.dart';
-import 'Gift.dart';
+import '../models/Gift.dart';
 
-const String fileName = "hedieaydb.db";
+const String fileName = "hedieaydb2.db";
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -26,6 +26,19 @@ class DatabaseHelper {
     _database = await _initializeDB(fileName);
     return _database!;
   }
+
+// Future<void> deleteDatabaseFile() async {
+//    String dbPath = await getDatabasesPath();
+//    String path = join(dbPath, fileName);
+//
+//    try {
+//     await deleteDatabase(path);
+//     _database = null;
+//     print("Database deleted successfully.");
+//    } catch (e) {
+//     print("Error deleting database: $e");
+//    }
+//   }
 
   Future<Database> _initializeDB(String fileName) async {
     final dbPath = await getDatabasesPath();
@@ -89,6 +102,26 @@ class DatabaseHelper {
         FOREIGN KEY (eventId) REFERENCES Events (id)
       );
     ''');
+
+    await db.execute(
+      '''
+      CREATE TABLE PledgedGifts(
+          id TEXT PRIMARY KEY,             
+          userId TEXT NOT NULL,          
+          giftId TEXT NOT NULL,            
+          friendId TEXT NOT NULL,  
+           eventId TEXT NOT NULL,        
+          FOREIGN KEY (userId) REFERENCES Users (id),  
+          FOREIGN KEY (giftId) REFERENCES Gifts (id),    
+          FOREIGN KEY (friendId) REFERENCES Users (id)
+          FOREIGN KEY (eventId) REFERENCES Events (id)
+
+      );
+      
+      
+     '''
+    );
+
   }
 
   static Future<List<Friend>> getFriends() async {
@@ -107,6 +140,8 @@ class DatabaseHelper {
     );
   }
 
+
+
   Future<int> updateFriend(Friend friend) async {
     final db = await DatabaseHelper().database;
     return await db.update('Friends', friend.toMap(),
@@ -119,18 +154,7 @@ class DatabaseHelper {
         .delete('Friends', where: 'friendId = ?', whereArgs: [friend.friendId]);
   }
 
-  // Future<void> deleteDatabaseFile() async {
-  //  String dbPath = await getDatabasesPath();
-  //  String path = join(dbPath, fileName);
-  //
-  //  try {
-  //   await deleteDatabase(path);
-  //   _database = null;
-  //   print("Database deleted successfully.");
-  //  } catch (e) {
-  //   print("Error deleting database: $e");
-  //  }
-  // }
+
 
 ///////////////////////////////////////////////////////////////
 
@@ -171,20 +195,20 @@ class DatabaseHelper {
   }
 ////////////////////////////////////////////////////////////
 
-  Future<int> insertUsers(User user) async{
+  Future<int> insertUsers(AppUser user) async{
 
     final db = await DatabaseHelper().database;
     return await db.insert('Users', user.toMap());
 
   }
 
-  static Future<List<User>> getUsers() async {
+  static Future<List<AppUser>> getUsers() async {
     final db = await DatabaseHelper().database;
     final List<Map<String, dynamic>> maps = await db.query('Users');
-    return List.generate(maps.length, (i) => User.fromMap(maps[i]));
+    return List.generate(maps.length, (i) => AppUser.fromMap(maps[i]));
   }
 
-  Future<int> updateUesrs(User user) async{
+  Future<int> updateUesrs(AppUser user) async{
 
     final db = await DatabaseHelper().database;
     return await db.update('Users', user.toMap(), where: 'id = ?', whereArgs: [user.id]);
@@ -192,7 +216,7 @@ class DatabaseHelper {
 
   }
 
-  Future<int> deleteUser(User user) async {
+  Future<int> deleteUser(AppUser user) async {
     final db = await DatabaseHelper().database;
     return await db.delete('Users', where: 'id = ?', whereArgs: [user.id]);
   }
@@ -203,10 +227,19 @@ class DatabaseHelper {
   Future<List<Gift>> getGifts(String eventId) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('Gifts', where: 'eventId =?', whereArgs: [eventId]);
+
+    // for (var map in maps) {
+    //   print("Gift ID: ${map['id']}, Name: ${map['name']}");
+    // }
+
+    print(maps);
+
     return List.generate(maps.length, (i) => Gift.fromMap(maps[i]));
   }
 
   Future<int> insertGift(Gift gift) async {
+
+    print('Inserting Gift into DB: ${gift.toMap()}');
 
     final db = await database;
     return await db.insert(
@@ -219,13 +252,30 @@ class DatabaseHelper {
 
   Future<int> updateGift(Gift gift) async {
     final db = await database;
-    return await db.update('Gifts', gift.toMap(), where: 'id =?', whereArgs: [gift.id]);
+
+    try {
+      if (gift.id == null) {
+        throw ArgumentError("Gift ID cannot be null");
+      }
+
+      return await db.update(
+        'Gifts',
+        gift.toMap(),
+        where: 'id =?',
+        whereArgs: [gift.id],
+      );
+    } catch (e) {
+      print('Error updating gift: $e');
+      return 0;
+    }
   }
+
 
   Future<int> deleteGift(Gift gift) async {
     final db = await database;
     return await db.delete('Gifts', where: 'id =?', whereArgs: [gift.id]);
   }
+
 
   static Future<List<Gift>> getPledgedGiftsByUserId(String userId) async {
     final db = await DatabaseHelper().database;
@@ -251,9 +301,81 @@ class DatabaseHelper {
   }
 
 
+//////////////////////////////////////
+
+  Future<List<Map<String, dynamic>>> getPledgedGiftsByFriendAndUser(String userId, String friendId) async {
+    final db = await database;
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'PledgedGifts',
+      where: 'userId = ? AND friendId = ?',
+      whereArgs: [userId, friendId],
+    );
+
+    return maps;
+  }
+
+
+  Future<int> insertPledgedGift({
+    required String id,
+    required String userId,
+    required String friendId,
+    required String giftId,
+    required String eventId,
+  }) async {
+    final db = await database;
+
+    final pledgedGift = {
+      'id': id,
+      'userId': userId,
+      'friendId': friendId,
+      'giftId': giftId,
+      'eventId': eventId,
+    };
+
+    return await db.insert(
+      'PledgedGifts',
+      pledgedGift,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> updatePledgedGift({
+    required String id,
+    required String userId,
+    required String friendId,
+    required String giftId,
+    required String eventId,
+  }) async {
+    final db = await database;
+
+    final pledgedGift = {
+      'userId': userId,
+      'friendId': friendId,
+      'giftId': giftId,
+      'eventId': eventId,
+    };
+
+    return await db.update(
+      'PledgedGifts',
+      pledgedGift,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 
 
 
+  Future<List<Map<String, dynamic>>> getGiftsPledgedToFriendByUser(String userId, String friendId) async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT pg.id AS pledgedGiftId, g.name AS giftName, g.description AS giftDescription
+    FROM PledgedGifts pg
+    JOIN Gifts g ON pg.giftId = g.id
+    WHERE pg.userId = ? AND pg.friendId = ?
+  ''', [userId, friendId]);
+  }
 
 
 

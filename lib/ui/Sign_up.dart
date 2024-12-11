@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'Auth.dart';
+import '../controllers/Auth.dart';
+import '../main.dart';
+
 
 class Sign_up extends StatefulWidget {
   const Sign_up({super.key});
@@ -9,7 +11,7 @@ class Sign_up extends StatefulWidget {
 }
 
 class _Sign_upState extends State<Sign_up> {
-  TextEditingController UserName = TextEditingController();
+  TextEditingController AppUserName = TextEditingController();
   TextEditingController Password = TextEditingController();
   TextEditingController Email = TextEditingController();
   MyAuth myAuth = MyAuth();
@@ -44,9 +46,9 @@ class _Sign_upState extends State<Sign_up> {
                     children: [
                       SizedBox(
                           child: TextFormField(
-                            controller: UserName,
+                            controller: AppUserName,
                             decoration: InputDecoration(
-                                hintText: 'UserName',
+                                hintText: 'AppUserName',
                                 prefixIcon: Icon(Icons.person_rounded)),
                           )),
                       SizedBox(
@@ -78,9 +80,11 @@ class _Sign_upState extends State<Sign_up> {
                                 backgroundColor: Color(0XFF996CF3)),
                             onPressed: () async {
 
-                              bool status = await  myAuth.sign_up(Email.text, Password.text);
+                             final newUser = await  myAuth.sign_up(Email.text, Password.text);
 
-                              if(status == true){
+                             await updateAppUser();
+
+                              if(newUser != null){
                                 Navigator.pushNamedAndRemoveUntil(context,
                                     '/home', (Route<dynamic> route) => false);
                               }else{

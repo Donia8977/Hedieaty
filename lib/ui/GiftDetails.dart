@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 import 'dart:io';
+import '../controllers/DatabaseHelper.dart';
+import '../models/Gift.dart';
+import 'GiftList.dart';
+import 'package:hedieaty/controllers/FireStoreHelper.dart';
 
 void main() => runApp(MaterialApp(home: GiftDetailsPage()));
 
@@ -8,6 +13,7 @@ class GiftDetailsPage extends StatefulWidget {
 
 
   final Map<String, dynamic>? gift;
+
 
   GiftDetailsPage({this.gift});
 
@@ -30,7 +36,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
   void initState() {
     super.initState();
     if (widget.gift != null) {
-      // Prepopulate fields if editing an existing gift
       nameController.text = widget.gift?['name'] ?? '';
       descriptionController.text = widget.gift?['description'] ?? '';
       categoryController.text = widget.gift?['category'] ?? '';
@@ -38,9 +43,18 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
       isPledged = widget.gift?['pledged'] ?? false;
       isEditingAllowed = !isPledged;
     }
+    else{
+
+      nameController.text = '';
+      descriptionController.text = '';
+      categoryController.text = '';
+      priceController.text = '';
+      isPledged = false;
+      isEditingAllowed = true;
+
+    }
   }
 
-  // Pick an image from the gallery
   Future<void> _pickImage() async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -50,34 +64,54 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
     }
   }
 
-  // Save or update gift
-  void _saveGift() {
+  final uuid = Uuid();
+
+
+  Future<void> _saveGift() async {
     if (nameController.text.isNotEmpty &&
         descriptionController.text.isNotEmpty &&
         categoryController.text.isNotEmpty &&
         priceController.text.isNotEmpty) {
-      // Add or update the gift based on the gift data (this is just a mock)
-      print("Gift saved!");
-      // Here you would normally save the data to a database or API
-      Navigator.pop(context);
+
+      final newGift = {
+        'id': widget.gift?['id'] ?? uuid.v4(),
+        'name': nameController.text,
+        'description': descriptionController.text,
+        'category': categoryController.text,
+        'price': double.tryParse(priceController.text) ?? 0.0,
+        'pledged': isPledged,
+        'status': isPledged ? 'Pledged' : 'Available',
+        'eventId': widget.gift?['eventId'] ?? '',
+      };
+
+      final dbHelper = DatabaseHelper();
+      if (widget.gift == null)  {
+       // newGift['id'] = uuid.v4();
+        int generatedId = await dbHelper.insertGift(Gift.fromMap(newGift));
+        print('Generated Gift ID: $generatedId');
+      } else {
+
+        print('Updating gift with ID: ${widget.gift?['id']}');
+
+        final giftId = widget.gift?['id'];
+        final updatedGift = Gift.fromMap({...newGift, 'id': giftId});
+        await dbHelper.updateGift(updatedGift);
+      }
+
+      Navigator.pop(context, newGift);
+    //  print("Gift saved!");
+
     }
   }
 
-
-
-
-
-
-
-
-
-
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
         appBar: AppBar(
       backgroundColor: Color(0XFF996CF3),
       title: Text('Gift Details', style: TextStyle(color: Colors.white)),
+         // title: Text(gift['name']),
       actions: [
         PopupMenuButton<String>(
           color: Color(0XFF996CF3),
@@ -162,8 +196,21 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed: _saveGift,
+             // onPressed: _saveGift,
+
+              onPressed: () async {
+                await _saveGift();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GiftListPage(eventId: 'id',),
+                  ),
+                );
+              },
               child: Text(widget.gift == null ? 'Add Gift' : 'Update Gift'),
+
+
+
             ),
           ],
         ),

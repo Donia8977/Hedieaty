@@ -1,8 +1,13 @@
-import 'DatabaseHelper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:hedieaty/controllers/DatabaseHelper.dart';
+import 'package:sqflite/sqflite.dart';
+
+
 
 class AppEvent {
 
-  final String? id;
+  final String id;
   final String name;
   final String date;
   final String? location;
@@ -11,7 +16,7 @@ class AppEvent {
   final String status;
   final String category;
 
-  AppEvent({this.id, required this.name, required this.date, this.location, this.description,
+  AppEvent({required this.id, required this.name, required this.date, this.location, this.description,
     required this.userId , required this.status , required this.category});
 
   Map<String, dynamic> toMap() {
@@ -42,9 +47,18 @@ class AppEvent {
   }
 
 
-
-
-
+  factory AppEvent.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return AppEvent(
+      id: doc.id,
+      name: data['name'] ?? '',
+      category: data['category'] ?? '',
+      status: data['status'] ?? '',
+      location: data['location'],
+      date: data['date'] ?? '',
+      userId: data['userId'] ?? '',
+    );
+  }
 
 
 }
