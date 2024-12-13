@@ -48,23 +48,6 @@ class _EventListPageState extends State<EventListPage> {
         isLoading = true;
       });
 
-      // try {
-      //   final fetchedEvents = await fireStoreHelper.fetchEvents(currentUser.uid);
-      //   print("Fetched events: $fetchedEvents");
-      //   setState(() {
-      //     events = fetchedEvents
-      //         .map((eventData) => AppEvent.fromFirestore(eventData))
-      //         .toList();
-      //   });
-      //
-      //   for (var event in events) {
-      //     print("Event ID: ${event.id}, Name: ${event.name}");
-      //   }
-      //
-      // } catch (e) {
-      //   print("Error loading events: $e");
-      // }
-
       try {
         QuerySnapshot snapshot = await FirebaseFirestore.instance
             .collection('events')
@@ -405,9 +388,17 @@ class _EventListPageState extends State<EventListPage> {
           size: 60,
         )
             : events.isEmpty
-            ? Text(
-          "No events found",
-          style: TextStyle(fontSize: 18, color: Colors.grey),
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Lottie.asset(
+              'animation/purplish.json',
+              width: 350,
+              height: 350,
+              fit: BoxFit.contain,
+            ),
+
+          ],
         )
             : ListView.builder(
           itemCount: events.length,

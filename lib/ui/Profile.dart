@@ -220,7 +220,8 @@ void initState() {
       trailing: Icon(Icons.arrow_forward),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => MyPledgedGiftsPage()),
+        MaterialPageRoute(builder: (context) => MyPledgedGiftsPage(friendId: null,
+        eventId: null,)),
       ),
     );
   }

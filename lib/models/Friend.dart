@@ -7,8 +7,9 @@ class Friend {
   final String name;
   final String profilePic;
   final int upcomingEvents;
+  final String gender ;
 
-  Friend({required this.userId, required this.friendId ,  required this.name, required this.profilePic, required this.upcomingEvents,});
+  Friend({required this.userId, required this.friendId ,  required this.name, required this.profilePic, required this.upcomingEvents, required this.gender});
 
   Map<String, dynamic> toMap() {
     return {
@@ -17,6 +18,8 @@ class Friend {
       'name': name,
       'profilePic': profilePic,
       'upcomingEvents': upcomingEvents,
+      'gender': gender,
+
 
     };
   }
@@ -28,6 +31,7 @@ class Friend {
       name: map['name'],
       profilePic: map['profilePic'],
       upcomingEvents: map['upcomingEvents'],
+      gender: map['gender'],
     );
   }
   factory Friend.fromFirestore(Map<String, dynamic> data) {
@@ -37,6 +41,7 @@ class Friend {
       profilePic: data['profilePic'] as String? ?? 'images/3430601_avatar_female_normal_woman_icon.png',
       upcomingEvents: data['upcomingEvents'] as int? ?? 0,
       userId: '',
+      gender: data['gender'] as String? ?? 'Male',
     );
   }
 

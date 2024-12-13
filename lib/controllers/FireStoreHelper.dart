@@ -28,6 +28,27 @@ class FireStoreHelper{
       return [];
     }
   }
+
+  Future<void> deleteFriend(String friendId) async {
+    try {
+      QuerySnapshot snapshot = await firestore
+          .collection('friends')
+          .where('friendId', isEqualTo: friendId)
+          .get();
+
+      for (var doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      print("Friend deleted successfully!");
+    } catch (e) {
+      print("Error deleting friend: $e");
+    }
+  }
+
+
+
+
 ////////////////////////////////////////////////////////////////////
 
    Future<void> addEvents(Map<String, dynamic> eventData)async{
@@ -95,14 +116,16 @@ class FireStoreHelper{
 /////////////////////////////////////////////////////////////////////////////
 
 
-  Future<void> addGift(Map<String, dynamic> giftData) async {
+  Future<String> addGift(Map<String, dynamic> giftData) async {
     try {
       final docRef = firestore.collection('giftLists').doc();
       giftData['id'] = docRef.id;
       await docRef.set(giftData);
       print("Gift added successfully with ID: ${docRef.id}");
+      return docRef.id;
     } catch (e) {
       print("Error adding gift: $e");
+      throw Exception("Failed to add gift");
     }
   }
 
@@ -114,6 +137,17 @@ class FireStoreHelper{
       print("Error updating gift: $e");
     }
   }
+
+  Future<void> addPledgedGift(Map<String, dynamic> pledgedGiftData) async {
+    try {
+      await firestore.collection('pledgedGift').doc(pledgedGiftData['id']).set(pledgedGiftData);
+      print("Pledged gift added successfully to Firestore");
+    } catch (e) {
+      print("Error adding pledged gift: $e");
+    }
+  }
+
+
 
 
   Future<List<Map<String, dynamic>>> fetchGift(String eventId) async {

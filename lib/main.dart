@@ -1,27 +1,24 @@
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:flutter/material.dart';
 import 'package:hedieaty/ui/FriendEventList.dart';
 import 'package:hedieaty/ui/Sign_in.dart';
 import 'package:hedieaty/ui/Sign_up.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:lottie/lottie.dart';
 import 'ui/EventListPage.dart';
 import 'ui/Profile.dart';
 import 'ui/PledgedGifts.dart';
 import 'ui/GiftList.dart';
 import 'ui/GiftDetails.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'controllers/DatabaseHelper.dart';
 import 'models/Friend.dart';
-import 'models/AppUser.dart' ;
+import 'models/AppUser.dart';
 import 'package:uuid/uuid.dart';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'controllers/FireStoreHelper.dart';
-
 
 
 AppUser? appUser;
@@ -49,11 +46,7 @@ Future<void> updateAppUser() async {
   }
 }
 
-
-
-
 void main() async {
-
   final uuid = Uuid();
 
   final userId = uuid.v4();
@@ -65,9 +58,8 @@ void main() async {
   await updateAppUser();
 
   runApp(
-     MaterialApp(
+    MaterialApp(
       debugShowCheckedModeBanner: false,
-
       title: 'Hedieaty',
       initialRoute: '/sign_in',
       routes: {
@@ -75,7 +67,9 @@ void main() async {
         '/sign_in': (context) => Sign_in(),
         '/sign_up': (context) => Sign_up(),
         '/eventList': (context) => EventListPage(),
-        '/giftList': (context) => GiftListPage(eventId: 'id',),
+        '/giftList': (context) => GiftListPage(
+              eventId: 'id',
+            ),
         '/giftDetails': (context) => GiftDetailsPage(),
         '/profile': (context) {
           if (appUser == null) {
@@ -84,17 +78,13 @@ void main() async {
             return ProfilePage(user: appUser!);
           }
         },
-        '/pledgedGifts': (context) => MyPledgedGiftsPage(),
-
+        '/pledgedGifts': (context) => MyPledgedGiftsPage(
+          friendId: null,
+          eventId: null,),
       },
-
-
     ),
   );
-
-
 }
-
 
 class HomePage extends StatefulWidget {
   @override
@@ -102,16 +92,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   final uuid = Uuid();
   bool isLoading = true;
 
   @override
   void initstate() {
     super.initState();
-    FirebaseAuth.instance
-        .authStateChanges()
-        .listen((User? user) {
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
         print('=========================User is currently signed out!');
       } else {
@@ -122,15 +109,14 @@ class _HomePageState extends State<HomePage> {
 
   List<Friend> friends = [];
 
-   DatabaseHelper _dbHelper = DatabaseHelper();
-   FireStoreHelper FirestoreHelper = FireStoreHelper();
+  DatabaseHelper _dbHelper = DatabaseHelper();
+  FireStoreHelper FirestoreHelper = FireStoreHelper();
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   @override
   void initState() {
     super.initState();
     _loadFriends();
   }
-
 
   Future<void> _loadFriends() async {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -139,11 +125,11 @@ class _HomePageState extends State<HomePage> {
         isLoading = true;
       });
 
-      firestore.collection('friends')
+      firestore
+          .collection('friends')
           .where('userId', isEqualTo: currentUser.uid)
           .snapshots()
           .listen((QuerySnapshot snapshot) {
-
         final List<Friend> updatedFriends = snapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
           return Friend.fromFirestore(data);
@@ -157,10 +143,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
   void _showManualAddDialog() {
     String name = "";
     String phone = "";
+    String selectedGender = 'male';
+
+    var gender = ['male', 'female '];
 
     showDialog(
       context: context,
@@ -178,6 +166,20 @@ class _HomePageState extends State<HomePage> {
               keyboardType: TextInputType.phone,
               onChanged: (value) => phone = value,
             ),
+            DropdownButton<String>(
+              value: selectedGender,
+              items: gender.map((String gender) {
+                return DropdownMenuItem<String>(
+                  value: gender,
+                  child: Text(gender),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  selectedGender = newValue!;
+                });
+              },
+            ),
           ],
         ),
         actions: [
@@ -186,58 +188,56 @@ class _HomePageState extends State<HomePage> {
             onPressed: () => Navigator.pop(context),
           ),
           ElevatedButton(
-            child: Text("Add"),
-            onPressed: () async {
-              if (name.isNotEmpty && phone.isNotEmpty) {
+              child: Text("Add"),
+              onPressed: () async {
+                if (name.isNotEmpty && phone.isNotEmpty) {
+                  final currentUser = FirebaseAuth.instance.currentUser;
+                  if (currentUser != null) {
+                    final friendId = uuid.v4();
 
-                final currentUser = FirebaseAuth.instance.currentUser;
-                if (currentUser != null) {
-                  final friendId = uuid.v4();
-                  // final newFriend = Friend(
-                  //   userId: userId,
-                  //   friendId: friendId,
-                  //   name: name,
-                  //   profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-                  //   upcomingEvents: 0,
-                  // );
-                  //
-                  //
-                  // await _dbHelper.insertFriend(newFriend);
-                  // _loadFriends();
-                  final friendData = {
-                    'friendId': friendId,
-                    'name': name,
-                    'profilePic': 'images/3430601_avatar_female_normal_woman_icon.png', // Add profile pic path or leave empty
-                    'upcomingEvents': 0,
+                    String profilePic = selectedGender == 'male' ? 'images/male_iocn.png' : 'images/3430601_avatar_female_normal_woman_icon.png';
 
-                  };
+                    // final newFriend = Friend(
+                    //   userId: userId,
+                    //   friendId: friendId,
+                    //   name: name,
+                    //   profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
+                    //   upcomingEvents: 0,
+                    // );
+                    //
+                    //
+                    // await _dbHelper.insertFriend(newFriend);
+                    // _loadFriends();
+                    final friendData = {
+                      'friendId': friendId,
+                      'name': name,
+                      'profilePic': profilePic,
+                      'upcomingEvents': 0,
+                    };
 
-                  await FirestoreHelper.addFriend(currentUser.uid, friendData);
-                  _loadFriends();
+                    await FirestoreHelper.addFriend(
+                        currentUser.uid, friendData);
+                    _loadFriends();
 
-                  Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Please fill in all fields.")),
-                  );
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Please fill in all fields.")),
+                    );
+                  }
                 }
-              }
-            }
-
-          ),
-
-
+              }),
         ],
       ),
     );
   }
 
-
   void _selectContactFromList() async {
     bool permissionGranted = await FlutterContacts.requestPermission();
 
     if (permissionGranted) {
-      List<Contact> contacts = await FlutterContacts.getContacts(withProperties: true);
+      List<Contact> contacts =
+          await FlutterContacts.getContacts(withProperties: true);
 
       showDialog(
         context: context,
@@ -252,7 +252,9 @@ class _HomePageState extends State<HomePage> {
                 final contact = contacts[index];
                 return ListTile(
                   title: Text(contact.displayName),
-                  subtitle: Text(contact.phones.isNotEmpty ? contact.phones.first.number : "No Phone"),
+                  subtitle: Text(contact.phones.isNotEmpty
+                      ? contact.phones.first.number
+                      : "No Phone"),
                   onTap: () async {
                     if (contact.phones.isNotEmpty) {
                       final currentUser = FirebaseAuth.instance.currentUser;
@@ -260,13 +262,14 @@ class _HomePageState extends State<HomePage> {
                         final friendId = uuid.v4();
 
                         final friendData = (
-
                           friendId: friendId,
                           name: contact.displayName,
-                          profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
+                          profilePic:
+                              "images/3430601_avatar_female_normal_woman_icon.png",
                           upcomingEvents: 0,
                         );
-                        await FirestoreHelper.addFriend(currentUser.uid, friendData as Map<String, dynamic>);
+                        await FirestoreHelper.addFriend(currentUser.uid,
+                            friendData as Map<String, dynamic>);
                         _loadFriends();
                       }
                     }
@@ -280,19 +283,17 @@ class _HomePageState extends State<HomePage> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Contacts permission is required to access your contact list."),
+        content: Text(
+            "Contacts permission is required to access your contact list."),
       ));
     }
   }
-
-
 
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-
         backgroundColor: Color(0XFF996CF3),
         title: Text("Hedieaty", style: TextStyle(color: Colors.white)),
         actions: [
@@ -303,8 +304,6 @@ class _HomePageState extends State<HomePage> {
                   context: context, delegate: FriendSearchDelegate(friends));
             },
           ),
-
-
           PopupMenuButton<String>(
             color: Color(0XFF996CF3),
             onSelected: (String route) => Navigator.pushNamed(context, route),
@@ -316,9 +315,82 @@ class _HomePageState extends State<HomePage> {
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],
           ),
-
         ],
       ),
+      // body: isLoading
+      //     ? Center(
+      //         child: LoadingAnimationWidget.inkDrop(
+      //           color: Color(0XFF996CF3),
+      //           size: 60,
+      //         ),
+      //       )
+      //     : friends.isEmpty
+      //     ? Center(
+      //   child: Column(
+      //     mainAxisAlignment: MainAxisAlignment.center,
+      //     children: [
+      //       Lottie.asset(
+      //         'animation/purplish.json',
+      //         width: 200,
+      //         height: 200,
+      //         fit: BoxFit.contain,
+      //       ),
+      //
+      //
+      //     ],
+      //   ),
+      // )
+      //     : ListView.builder(
+      //         padding:
+      //             const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      //         itemCount: friends.length + 1,
+      //         itemBuilder: (context, index) {
+      //           if (index == 0) {
+      //             return Padding(
+      //               padding: const EdgeInsets.only(bottom: 16.0),
+      //               child: ElevatedButton(
+      //                 onPressed: () {
+      //                   Navigator.push(
+      //                     context,
+      //                     MaterialPageRoute(
+      //                         builder: (context) => EventListPage()),
+      //                   );
+      //                 },
+      //                 child: Text("Create Your Own Event/List"),
+      //               ),
+      //             );
+      //           } else {
+      //             final friend = friends[index - 1];
+      //             return Padding(
+      //               padding: const EdgeInsets.symmetric(vertical: 4.0),
+      //               child: ListTile(
+      //                 leading: CircleAvatar(
+      //                   backgroundImage: AssetImage(friend.gender == 'male'
+      //                       ? 'images/male_iocn.png'
+      //                       : 'images/3430601_avatar_female_normal_woman_icon.png'),
+      //                 ),
+      //                 title: Text(friend.name),
+      //                 subtitle: Text(friend.upcomingEvents > 0
+      //                     ? "Upcoming Events: ${friend.upcomingEvents}"
+      //                     : "No Upcoming Events"),
+      //                 trailing: Icon(Icons.arrow_forward),
+      //                 onTap: () {
+      //                   Navigator.push(
+      //                     context,
+      //                     MaterialPageRoute(
+      //                         builder: (context) => FriendEventList(
+      //                               userId:
+      //                                   FirebaseAuth.instance.currentUser!.uid,
+      //                               friendId: friend.friendId,
+      //                               friendName: friend.name,
+      //                             )),
+      //                   );
+      //                 },
+      //               ),
+      //             );
+      //           }
+      //         },
+      //       ),
 
       body: isLoading
           ? Center(
@@ -327,51 +399,175 @@ class _HomePageState extends State<HomePage> {
           size: 60,
         ),
       )
-          : ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        itemCount: friends.length + 1,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => EventListPage()),
-                  );
-                },
-                child: Text("Create Your Own Event/List"),
-              ),
-            );
-          } else {
-            final friend = friends[index - 1];
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: friend.profilePic.isNotEmpty
-                      ? AssetImage(friend.profilePic)
-                      : AssetImage(
-                      "images/3430601_avatar_female_normal_woman_icon.png"),
-                ),
-                title: Text(friend.name),
-                subtitle: Text(friend.upcomingEvents > 0
-                    ? "Upcoming Events: ${friend.upcomingEvents}"
-                    : "No Upcoming Events"),
-                trailing: Icon(Icons.arrow_forward),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => FriendEventList( userId: FirebaseAuth.instance.currentUser!.uid,
-                      friendId: friend.friendId, friendName: friend.name, )),
-                  );
+          : Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EventListPage(),
+                  ),
+                );
+              },
+              child: Text("Create Your Own Event/List"),
+            ),
+          ),
+          // Show animation or friend list based on condition
+          // Expanded(
+          //   child: friends.isEmpty
+          //       ? Center(
+          //     child: Column(
+          //       mainAxisAlignment: MainAxisAlignment.center,
+          //       children: [
+          //         Lottie.asset(
+          //           'animation/purplish.json',
+          //           width: 350,
+          //           height: 350,
+          //           fit: BoxFit.contain,
+          //         ),
+          //         const SizedBox(height: 20),
+          //         const Text(
+          //           "No friends found. Add a friend to get started!",
+          //           style: TextStyle(fontSize: 16, color: Colors.grey),
+          //         ),
+          //       ],
+          //     ),
+          //   )
+          //       : ListView.builder(
+          //     padding: const EdgeInsets.symmetric(
+          //         vertical: 8.0, horizontal: 16.0),
+          //     itemCount: friends.length,
+          //     itemBuilder: (context, index) {
+          //       final friend = friends[index];
+          //       return Padding(
+          //         padding: const EdgeInsets.symmetric(vertical: 4.0),
+          //         child: ListTile(
+          //           leading: CircleAvatar(
+          //             backgroundImage: AssetImage(friend.gender == 'male'
+          //                 ? 'images/male_iocn.png'
+          //                 : 'images/3430601_avatar_female_normal_woman_icon.png'),
+          //           ),
+          //           title: Text(friend.name),
+          //           subtitle: Text(friend.upcomingEvents > 0
+          //               ? "Upcoming Events: ${friend.upcomingEvents}"
+          //               : "No Upcoming Events"),
+          //           trailing: Icon(Icons.arrow_forward),
+          //           onTap: () {
+          //             Navigator.push(
+          //               context,
+          //               MaterialPageRoute(
+          //                 builder: (context) => FriendEventList(
+          //                   userId:
+          //                   FirebaseAuth.instance.currentUser!.uid,
+          //                   friendId: friend.friendId,
+          //                   friendName: friend.name,
+          //                 ),
+          //               ),
+          //             );
+          //           },
+          //         ),
+          //
+          //
+          //       );
+          //     },
+          //   ),
+          // ),
 
-                },
+          Expanded(
+            child: friends.isEmpty
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Lottie.asset(
+                    'animation/purplish.json',
+                    width: 350,
+                    height: 350,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "No friends found. Add a friend to get started!",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ],
               ),
-            );
-          }
-        },
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              itemCount: friends.length,
+              itemBuilder: (context, index) {
+                final friend = friends[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: AssetImage(friend.gender == 'male'
+                          ? 'images/male_iocn.png'
+                          : 'images/3430601_avatar_female_normal_woman_icon.png'),
+                    ),
+                    title: Text(friend.name),
+                    subtitle: Text(friend.upcomingEvents > 0
+                        ? "Upcoming Events: ${friend.upcomingEvents}"
+                        : "No Upcoming Events"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_forward),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FriendEventList(
+                                  userId: FirebaseAuth.instance.currentUser!.uid,
+                                  friendId: friend.friendId,
+                                  friendName: friend.name,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            final shouldDelete = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text("Delete Friend"),
+                                content: Text(
+                                    "Are you sure you want to delete ${friend.name}?"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: Text("Cancel"),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: Text("Delete"),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (shouldDelete ?? false) {
+                              await FirestoreHelper.deleteFriend(friend.friendId);
+                              _loadFriends();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+        ],
       ),
 
       floatingActionButton: FloatingActionButton(
@@ -406,18 +602,8 @@ class _HomePageState extends State<HomePage> {
         },
         child: Icon(Icons.person_add),
       ),
-
-
-
-
-
     );
-
-
-
   }
-
-
 }
 
 // class _selectContactFromList {
@@ -435,7 +621,6 @@ PopupMenuItem<String> _buildMenuItem(String text, String route) {
     ),
   );
 }
-
 
 class FriendSearchDelegate extends SearchDelegate {
   final List<Friend> friends;
@@ -479,7 +664,6 @@ class FriendSearchDelegate extends SearchDelegate {
       return friend.name.toLowerCase().contains(query.toLowerCase());
     }).toList();
 
-
     if (filteredFriends.isEmpty) {
       return Center(child: Text("No friends found."));
     }
@@ -497,12 +681,10 @@ class FriendSearchDelegate extends SearchDelegate {
               ? "Upcoming Events: ${friend.upcomingEvents}"
               : "No Upcoming Events"),
           onTap: () {
-
             close(context, null);
           },
         );
       },
     );
-
   }
 }

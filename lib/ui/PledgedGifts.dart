@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:hedieaty/controllers/FireStoreHelper.dart';
@@ -7,7 +9,12 @@ import '../models/Gift.dart';
 
 
 class MyPledgedGiftsPage extends StatefulWidget {
-  const MyPledgedGiftsPage({super.key});
+
+ // final List<Gift>? pledgedGifts;
+  final String? friendId;
+  final String? eventId;
+
+  const MyPledgedGiftsPage({super.key , required this.friendId, required this.eventId});
 
   @override
   State<MyPledgedGiftsPage> createState() => _MyPledgedGiftsPageState();
@@ -17,13 +24,72 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
 
   List<Gift> gifts = [];
   final FireStoreHelper fireStoreHelper = FireStoreHelper();
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
   bool isLoading = true;
+  final currentUser = FirebaseAuth.instance.currentUser;
 
   // @override
   // void initState() {
   //   super.initState();
   //   fetchGifts(widget.eventId);
   // }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPledgedGifts();
+  }
+
+
+  Future<void> _loadPledgedGifts() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+
+      Query query = firestore.collection('pledgedGift').where('userId', isEqualTo: currentUser!.uid);
+
+      if (widget.friendId != null) {
+        query = query.where('friendId', isEqualTo: widget.friendId);
+      }
+      if (widget.eventId != null) {
+        query = query.where('eventId', isEqualTo: widget.eventId);
+      }
+
+      final pledgedGiftsSnapshot = await query.get();
+
+      final List<Gift> fetchedGifts = [];
+      for (var pledgedGiftDoc in pledgedGiftsSnapshot.docs) {
+        final pledgedGift = pledgedGiftDoc.data() as Map<String, dynamic>;
+        final giftDoc = await firestore.collection('giftLists').doc(pledgedGift['giftId']).get();
+
+        if (giftDoc.exists) {
+          final giftData = giftDoc.data() as Map<String, dynamic>;
+          fetchedGifts.add(Gift(
+            id: pledgedGift['giftId'],
+            name: giftData['name'],
+            category: giftData['category'],
+            price: giftData['price'].toDouble(),
+            status: giftData['status'],
+            eventId: giftData['eventId'],
+            friendName: '',
+          ));
+        }
+      }
+
+      setState(() {
+        gifts = fetchedGifts;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error loading pledged gifts: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +117,29 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
 
         ),
 
-
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : gifts.isEmpty
+          ? Center(
+        child: Lottie.asset(
+          'animation/purplish.json',
+          width: 350,
+          height: 350,
+          fit: BoxFit.contain,
+        ),
+      )
+          : ListView.builder(
+        itemCount: gifts.length,
+        itemBuilder: (context, index) {
+          final gift = gifts[index];
+          return Card(
+            child: ListTile(
+              title: Text(gift.name),
+              subtitle: Text('${gift.category} - ${gift.price}'),
+            ),
+          );
+        },
+      ),
 
     );
   }

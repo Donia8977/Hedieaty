@@ -4,7 +4,8 @@ import '../main.dart';
 
 
 class Sign_up extends StatefulWidget {
-  const Sign_up({super.key});
+
+  const Sign_up({super.key });
 
   @override
   State<Sign_up> createState() => _Sign_upState();
@@ -48,7 +49,7 @@ class _Sign_upState extends State<Sign_up> {
                           child: TextFormField(
                             controller: AppUserName,
                             decoration: InputDecoration(
-                                hintText: 'AppUserName',
+                                hintText: 'UserName',
                                 prefixIcon: Icon(Icons.person_rounded)),
                           )),
                       SizedBox(

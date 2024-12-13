@@ -10,8 +10,10 @@ class Gift{
   late double price;
   late  String status;
   final String eventId;
+  late String friendName;
 
-  Gift({this.id, required this.name, this.description, required this.category, required this.price, required this.status, required this.eventId});
+
+  Gift({this.id, required this.name, this.description, required this.category, required this.price, required this.status, required this.eventId , required this.friendName});
 
   void updateStatus(String newStatus) {
     status = newStatus;
@@ -26,6 +28,7 @@ class Gift{
       'price': price,
       'status': status,
       'eventId': eventId,
+      'friendName': friendName,
     };
   }
 
@@ -44,6 +47,7 @@ class Gift{
       price: map['price']?.toDouble() ?? 0.0,
       status: map['status'] ?? 'Available',
       eventId: map['eventId'] ?? '',
+      friendName:  '',
     );
   }
 

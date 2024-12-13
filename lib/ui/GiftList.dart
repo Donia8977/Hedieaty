@@ -19,9 +19,11 @@ class GiftListPage extends StatefulWidget {
 }
 
 
+
 class _GiftListPageState extends State<GiftListPage> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final FireStoreHelper fireStoreHelper = FireStoreHelper();
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   List<Gift> gifts = [];
   bool isLoading = true;
@@ -69,12 +71,16 @@ class _GiftListPageState extends State<GiftListPage> {
       status: 'Available',
       price: price,
       eventId: widget.eventId,
+      friendName: '',
     );
     print('Adding Gift: ${newGift.toMap()}');
     // await _dbHelper.insertGift(newGift);
     await fireStoreHelper.addGift(newGift.toMap());
     fetchGifts(widget.eventId);
   }
+
+
+
 
   // Future<void> deleteGift(int index) async {
   //   final giftToDelete = Gift.fromMap(gifts[index]);

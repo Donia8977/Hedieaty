@@ -84,25 +84,34 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
         'eventId': widget.gift?['eventId'] ?? '',
       };
 
-      final dbHelper = DatabaseHelper();
-      if (widget.gift == null)  {
-       // newGift['id'] = uuid.v4();
-        int generatedId = await dbHelper.insertGift(Gift.fromMap(newGift));
-        print('Generated Gift ID: $generatedId');
+      if (widget.gift == null) {
+        try {
+          final generatedId = await FireStoreHelper().addGift(newGift);
+          print('Gift added successfully with ID: $generatedId');
+        } catch (e) {
+          print("Error adding gift: $e");
+        }
       } else {
-
-        print('Updating gift with ID: ${widget.gift?['id']}');
-
         final giftId = widget.gift?['id'];
-        final updatedGift = Gift.fromMap({...newGift, 'id': giftId});
-        await dbHelper.updateGift(updatedGift);
+        if (giftId != null) {
+          try {
+            await FireStoreHelper().updateGift(giftId, newGift);
+            print('Gift updated successfully in Firestore.');
+          } catch (e) {
+            print("Error updating gift in Firestore: $e");
+          }
+        } else {
+          print("Error: Gift ID is null. Cannot update gift.");
+        }
       }
 
       Navigator.pop(context, newGift);
-    //  print("Gift saved!");
-
+    } else {
+      print("Error: All fields must be filled.");
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -176,23 +185,23 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             ),
             SizedBox(height: 20),
 
-            Row(
-              children: [
-                Text('Status:'),
-                SizedBox(width: 10),
-                Switch(
-                  value: isPledged,
-                  onChanged: isEditingAllowed
-                      ? (value) {
-                    setState(() {
-                      isPledged = value;
-                    });
-                  }
-                      : null,
-                ),
-                Text(isPledged ? 'Pledged' : 'Available'),
-              ],
-            ),
+            // Row(
+            //   children: [
+            //     Text('Status:'),
+            //     SizedBox(width: 10),
+            //     Switch(
+            //       value: isPledged,
+            //       onChanged: isEditingAllowed
+            //           ? (value) {
+            //         setState(() {
+            //           isPledged = value;
+            //         });
+            //       }
+            //           : null,
+            //     ),
+            //     Text(isPledged ? 'Pledged' : 'Available'),
+            //   ],
+            // ),
             SizedBox(height: 20),
 
             ElevatedButton(
@@ -203,7 +212,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GiftListPage(eventId: 'id',),
+                    builder: (context) => GiftListPage(eventId: widget.gift?['eventId'] ?? ''),
                   ),
                 );
               },

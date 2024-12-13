@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'GiftDetails.dart';
+import 'PledgedGifts.dart';
 
 class Friendgiftlist extends StatefulWidget {
 
@@ -26,6 +27,7 @@ class Friendgiftlist extends StatefulWidget {
 
 class _FriendgiftlistState extends State<Friendgiftlist> {
  // final DatabaseHelper _dbHelper = DatabaseHelper();
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   List<Gift> gifts = [];
   bool isLoading = true;
@@ -66,32 +68,46 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     }
   }
 
-  Future<void> addGift(String name, String category , double price) async {
+
+
+  Future<void> addGift(String name, String category, double price) async {
     final uuid = Uuid();
 
-    final newGift = Gift(
-      id: uuid.v4(),
-      name: name,
-      category: category,
-      status: 'Available',
-      price: price,
-      eventId: widget.eventId,
-    );
-    // print('Adding Gift: ${newGift.toMap()}');
-    // await _dbHelper.insertGift(newGift);
-    // _loadGifts();
-    print('Adding Gift: ${newGift.toMap()}');
-
     try {
+
+      final querySnapshot = await firestore
+          .collection('friends')
+          .where('friendId', isEqualTo: widget.friendId)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        throw Exception("Friend with ID ${widget.friendId} does not exist.");
+      }
+
+      final friendData = querySnapshot.docs.first.data();
+      final friendName = friendData['name'] ?? 'Unknown';
+
+      // Create the Gift object
+      final newGift = Gift(
+        id: uuid.v4(),
+        name: name,
+        category: category,
+        status: 'Available',
+        price: price,
+        eventId: widget.eventId,
+        friendName: friendName,
+      );
+
+      print('Adding Gift: ${newGift.toMap()}');
+
       await FireStoreHelper().addGift(newGift.toMap());
-      print('Gift added to Firestore successfully.');
-
-     await _loadGifts();
-
+      _loadGifts(); // Refresh the gift list
     } catch (e) {
-      print('Error adding gift to Firestore: $e');
+      print('Error adding gift: $e');
     }
   }
+
+
 
 
   Color getGiftColor(String status) {
@@ -114,6 +130,8 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
   //   _loadGifts(); // Refresh the list
   // }
 
+
+
   Future<void> updateGiftStatus(int index, String newStatus) async {
     final Gift giftToUpdate = gifts[index];
     final String? giftId = giftToUpdate.id;
@@ -132,6 +150,18 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
         'status': newStatus,
       });
       print("Gift status updated successfully in Firestore.");
+
+      if (newStatus == 'Pledged') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MyPledgedGiftsPage(
+              friendId: widget.friendId,
+              eventId: widget.eventId,),
+          ),
+        );
+
+      }
     } catch (e) {
       print("Error updating gift status in Firestore: $e");
       setState(() {
@@ -142,6 +172,49 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     await _loadGifts();
   }
 
+  // Future<void> _loadPledgedGifts() async {
+  //   setState(() {
+  //     isLoading = true;
+  //   });
+  //
+  //   try {
+  //     // Fetch all gifts with status 'Pledged' and the specified eventId and friendId
+  //     Query query = firestore.collection('giftLists').where('status', isEqualTo: 'Pledged');
+  //
+  //     if (widget.eventId != null) {
+  //       query = query.where('eventId', isEqualTo: widget.eventId);
+  //     }
+  //     if (widget.friendId != null) {
+  //       query = query.where('friendId', isEqualTo: widget.friendId);
+  //     }
+  //
+  //     final querySnapshot = await query.get();
+  //
+  //     final List<Gift> fetchedGifts = querySnapshot.docs.map((doc) {
+  //       final data = doc.data() as Map<String, dynamic>;
+  //       return Gift(
+  //         id: doc.id,
+  //         name: data['name'],
+  //         category: data['category'],
+  //         price: data['price'].toDouble(),
+  //         status: data['status'],
+  //         eventId: data['eventId'],
+  //         friendName: data['friendName'] ?? '',
+  //       );
+  //     }).toList();
+  //
+  //     setState(() {
+  //       gifts = fetchedGifts;
+  //       isLoading = false;
+  //     });
+  //   } catch (e) {
+  //     print("Error loading pledged gifts: $e");
+  //     setState(() {
+  //       isLoading = false;
+  //     });
+  //   }
+  // }
+  //
 
   void sortGifts(String criteria) {
     setState(() {
@@ -160,35 +233,13 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
 
 
 
-  // void addGift(String name, String category) {
-  //   setState(() {
-  //     gifts.add({
-  //       'name': name,
-  //       'category': category,
-  //       'status': 'Available',
-  //       'pledged': false
-  //     });
-  //   });
-  // }
-  //
+
   void deleteGifts(int index) {
     setState(() {
       gifts.removeAt(index);
     });
   }
-  //
-  // // Edit a gift
-  // void editGift(int index, String name, String category) {
-  //   setState(() {
-  //     gifts[index]['name'] = name;
-  //     gifts[index]['category'] = category;
-  //   });
-  // }
-  //
-  // // Visual indicator for pledged gifts
-  // Color getGiftColor(bool pledged) {
-  //   return pledged ? Colors.green.shade200 : Colors.white;
-  // }
+
 
   Future<void> _openGiftDetails([Map<String, dynamic>? gift]) async {
     final result = await Navigator.push(
@@ -318,13 +369,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
             ),
             ElevatedButton(
               onPressed: () {
-                // print(
-                //     'Name: ${nameController.text}, Category: ${categoryController.text}, Price: ${priceController.text}');
-                // if (nameController.text.isNotEmpty &&
-                //     categoryController.text.isNotEmpty && priceController.text.isNotEmpty) {
-                //   addGift(nameController.text, categoryController.text , priceController.text);
-                //   Navigator.pop(context);
-                // }
 
                 final String name = nameController.text;
                 final String category = categoryController.text;
@@ -344,6 +388,63 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
               child: Text('Add'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+
+  void showGiftDetailsBottomSheet(BuildContext context, Gift gift) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Color(0XFF996CF3),
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return FractionallySizedBox(
+          heightFactor: 0.4,
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            padding: const EdgeInsets.all(40.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  gift.name,
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Category: ${gift.category}',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Price: \$${gift.price.toStringAsFixed(2)}',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Status: ${gift.status}',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Color(0XFF996CF3),
+                  ),
+                  child: Text('Close'),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -441,13 +542,14 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                             ],
                           ),
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    GiftDetailsPage(gift: gift.toMap()),
-                              ),
-                            );
+                            // Navigator.push(
+                            //   context,
+                            //   MaterialPageRoute(
+                            //     builder: (context) =>
+                            //         GiftDetailsPage(gift: gift.toMap()),
+                            //   ),
+                            // );
+                            showGiftDetailsBottomSheet(context, gift);
                           },
                         ),
                       );
