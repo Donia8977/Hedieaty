@@ -148,7 +148,7 @@ class _EventListPageState extends State<EventListPage> {
                       'userId': currentUser.uid,
                     };
 
-                    await fireStoreHelper.addEvents(eventData);
+                    await fireStoreHelper.addEvents(currentUser.uid, eventData);
                     _loadEvents();
                   }
                   // final newEvent = AppEvent(

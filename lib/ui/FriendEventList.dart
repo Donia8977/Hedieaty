@@ -7,8 +7,6 @@ import 'package:hedieaty/controllers/DatabaseHelper.dart';
 import '../controllers/FireStoreHelper.dart';
 import 'FriendGiftList.dart';
 
-
-
 class FriendEventList extends StatefulWidget {
 
   final String userId;
@@ -275,19 +273,19 @@ class _FriendEventListState extends State<FriendEventList> {
         });
   }
 
-  void _deleteEvent(int index) async {
-    final String? eventId = events[index].id;
-
-   // await DatabaseHelper().deleteEvent(eventId!);
-    if(eventId != null) {
-      await FireStoreHelper().deleteEventForFriend(eventId!, widget.friendId);
-      await _loadEvents();
-    }
-
-    // setState(() {
-    //   events.removeAt(index);
-    // });
-  }
+  // void _deleteEvent(int index) async {
+  //   final String? eventId = events[index].id;
+  //
+  //  // await DatabaseHelper().deleteEvent(eventId!);
+  //   if(eventId != null) {
+  //     await FireStoreHelper().deleteEventForFriend(eventId!, widget.friendId);
+  //     await _loadEvents();
+  //   }
+  //
+  //   // setState(() {
+  //   //   events.removeAt(index);
+  //   // });
+  // }
 
   void _sortEvents() {
     setState(() {
@@ -372,10 +370,10 @@ class _FriendEventListState extends State<FriendEventList> {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteEvent(index),
-                  ),
+                  // IconButton(
+                  //   icon: Icon(Icons.delete, color: Colors.red),
+                  //   onPressed: () => _deleteEvent(index),
+                  // ),
                   Icon(Icons.arrow_forward),
                 ],
               ),
@@ -388,10 +386,10 @@ class _FriendEventListState extends State<FriendEventList> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addFriendEvent,
-        child: Icon(Icons.add),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: _addFriendEvent,
+      //   child: Icon(Icons.add),
+      // ),
     );
   }
 }

@@ -19,7 +19,16 @@ class _Sign_inState extends State<Sign_in> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      body: SafeArea(
+      body:  Container(
+        height: double.infinity,
+        width: double.infinity,
+        decoration: const BoxDecoration(
+        image: DecorationImage(
+        image: AssetImage('images/signin_pagecute.jpg'),
+    fit: BoxFit.cover,
+    ),
+    ),
+    child:SafeArea(
         child: SingleChildScrollView(
           scrollDirection: Axis.vertical,
           child: Column(
@@ -35,10 +44,10 @@ class _Sign_inState extends State<Sign_in> {
                       fontWeight: FontWeight.bold),
                 ),
               ),
-              const CircleAvatar(
-                radius: 150,
-                backgroundImage: AssetImage('images/gift.png'),
-              ),
+              // const CircleAvatar(
+              //   radius: 150,
+              //   backgroundImage: AssetImage('images/gift.png'),
+              // ),
               Padding(
                 padding: EdgeInsets.all(30),
                 child: Column(
@@ -115,6 +124,7 @@ class _Sign_inState extends State<Sign_in> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -56,18 +56,23 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     try {
       final fetchedGifts = await FireStoreHelper().fetchGift(widget.eventId);
       print('Fetched gifts from Firestore: $fetchedGifts');
-      setState(() {
-        gifts = fetchedGifts.map((giftData) => Gift.fromMap(giftData)).toList();
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          gifts = fetchedGifts.map((giftData) => Gift.fromMap(giftData)).toList();
+          isLoading = false;
+        });
+      }
     } catch (e) {
       print("Error loading gifts: $e");
-      setState(() {
-        isLoading = false;
-      });
+      if(mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
+  //for new version
 
 
   Future<void> addGift(String name, String category, double price) async {
@@ -234,11 +239,11 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
 
 
 
-  void deleteGifts(int index) {
-    setState(() {
-      gifts.removeAt(index);
-    });
-  }
+  // void deleteGifts(int index) {
+  //   setState(() {
+  //     gifts.removeAt(index);
+  //   });
+  // }
 
 
   Future<void> _openGiftDetails([Map<String, dynamic>? gift]) async {
@@ -533,12 +538,12 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                                   }
                                 },
                               ),
-                              IconButton(
-                                icon: Icon(Icons.delete),
-                                onPressed: () {
-                                  deleteGifts(index);
-                                },
-                              ),
+                              // IconButton(
+                              //   icon: Icon(Icons.delete),
+                              //   onPressed: () {
+                              //     deleteGifts(index);
+                              //   },
+                              // ),
                             ],
                           ),
                           onTap: () {
@@ -558,13 +563,13 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // var res =  DatabaseHelper().deleteDatabaseFile();
-          showAddGiftDialog(context);
-        },
-        child: Icon(Icons.add),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     // var res =  DatabaseHelper().deleteDatabaseFile();
+      //     showAddGiftDialog(context);
+      //   },
+      //   child: Icon(Icons.add),
+      // ),
     );
   }
 }

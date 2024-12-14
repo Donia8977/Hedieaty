@@ -6,17 +6,52 @@ class FireStoreHelper{
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-   Future<void> addFriend(String userId , Map<String, dynamic> friendData) async {
+  //  Future<void> addFriend(String userId , Map<String, dynamic> friendData) async {
+  //   try {
+  //     friendData['userId'] = userId;
+  //     await firestore.collection('friends').add(friendData);
+  //     print("Friend added successfully!");
+  //   } catch (e) {
+  //     print("Error adding friend: $e");
+  //   }
+  // }
+
+  Future<void> addFriend(String userId, Map<String, dynamic> friendData) async {
     try {
-      friendData['userId'] = userId;
+      // Check if the friend already exists in the user's friend list
+      final existingFriendQuery = await firestore
+          .collection('friends')
+          .where('userId', isEqualTo: userId)
+          .where('friendId', isEqualTo: friendData['friendId'])
+          .get();
+
+      if (existingFriendQuery.docs.isNotEmpty) {
+        print("Friend already exists in the list.");
+        return;
+      }
+
+      // Query the friend's existing events to count them
+      final eventsQuery = await firestore
+          .collection('events')
+          .where('userId', isEqualTo: friendData['friendId'])
+          .get();
+
+      final upcomingEventsCount = eventsQuery.docs.length;
+
+      // Add the `upcomingEvents` field based on the count of the friend's events
+      friendData['upcomingEvents'] = upcomingEventsCount;
+
+      // Add the friend to the `friends` collection
       await firestore.collection('friends').add(friendData);
-      print("Friend added successfully!");
+
+      print("Friend added successfully with $upcomingEventsCount upcoming events!");
     } catch (e) {
       print("Error adding friend: $e");
     }
   }
 
-   Future<List<Map<String, dynamic>>> fetchFriends(String userId) async {
+
+  Future<List<Map<String, dynamic>>> fetchFriends(String userId) async {
     try {
       QuerySnapshot snapshot = await firestore
           .collection('friends')
@@ -51,17 +86,53 @@ class FireStoreHelper{
 
 ////////////////////////////////////////////////////////////////////
 
-   Future<void> addEvents(Map<String, dynamic> eventData)async{
+//
+//    Future<void> addEvents(Map<String, dynamic> eventData)async{
+//
+//      try {
+//        await firestore.collection('events').add(eventData);
+//        print("Event added successfully!");
+//      } catch (e) {
+//        print("Error adding Events: $e");
+//      }
+//
+//
+//    }
 
-     try {
-       await firestore.collection('events').add(eventData);
-       print("Event added successfully!");
-     } catch (e) {
-       print("Error adding Events: $e");
-     }
+  Future<void> addEvents(String userId, Map<String, dynamic> eventData) async {
+    try {
+      // Add the event to the events collection
+      final eventDocRef = firestore.collection('events').doc();
+      eventData['id'] = eventDocRef.id;
+      eventData['userId'] = userId; // Ensure the event is tied to the correct user
+      await eventDocRef.set(eventData);
 
+      print("Event added successfully!");
 
-   }
+      // Find all users who have this user as a friend and increment their `upcomingEvents`
+      final friendQuery = await firestore
+          .collection('friends')
+          .where('friendId', isEqualTo: userId) // Find all friends of this user
+          .get();
+
+      for (var friendDoc in friendQuery.docs) {
+        final friendRef = friendDoc.reference;
+        await firestore.runTransaction((transaction) async {
+          final friendSnapshot = await transaction.get(friendRef);
+          if (friendSnapshot.exists) {
+            final currentUpcomingEvents = friendSnapshot['upcomingEvents'] ?? 0;
+            transaction.update(friendRef, {
+              'upcomingEvents': currentUpcomingEvents + 1,
+            });
+            print("Incremented upcomingEvents for a friend.");
+          }
+        });
+      }
+    } catch (e) {
+      print("Error adding event: $e");
+    }
+  }
+
 
   Future<List<Map<String, dynamic>>> fetchEventsUsers(String userId) async {
     try {

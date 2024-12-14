@@ -22,109 +22,136 @@ class _Sign_upState extends State<Sign_up> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
-      appBar: AppBar(
-        backgroundColor: Colors.grey[100],
-        title: Text(
-          "Let's Create an account",
-          style: TextStyle(
-              fontSize: 25, color: Color(0XFF996CF3), fontWeight: FontWeight.bold),
+      body: Container(
+        // Background image decoration
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('images/signin_pagecute.jpg'),
+            fit: BoxFit.cover,
+          ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(30),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 20,
+        child: Column(
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: const Text(
+                "Let's Create an account",
+                style: TextStyle(
+                  fontSize: 25,
+                  color: Color(0XFF996CF3),
+                  fontWeight: FontWeight.bold,
                 ),
-                Form(
-                  key: mykey,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                          child: TextFormField(
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(30),
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: mykey,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          // UserName Field
+                          TextFormField(
                             controller: AppUserName,
-                            decoration: InputDecoration(
-                                hintText: 'UserName',
-                                prefixIcon: Icon(Icons.person_rounded)),
-                          )),
-                      SizedBox(
-                        height: 30,
-                      ),
-                      SizedBox(
-                          child: TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'UserName',
+                              prefixIcon: Icon(Icons.person_rounded),
+                              filled: true,
+                              fillColor: Colors.white70,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          // Email Field
+                          TextFormField(
                             controller: Email,
-                            decoration: InputDecoration(
-                                hintText: 'Email', prefixIcon: Icon(Icons.email)),
-                          )),
-                      SizedBox(
-                        height: 30,
-                      ),
-                      SizedBox(
-                          child: TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'Email',
+                              prefixIcon: Icon(Icons.email),
+                              filled: true,
+                              fillColor: Colors.white70,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          // Password Field
+                          TextFormField(
                             controller: Password,
-                            decoration: InputDecoration(
-                                hintText: 'Password',
-                                prefixIcon: Icon(Icons.password)),
-                          )),
-                      SizedBox(
-                        height: 30,
-                      ),
-                      SizedBox(
-                        child: ElevatedButton(
+                            decoration: const InputDecoration(
+                              hintText: 'Password',
+                              prefixIcon: Icon(Icons.password),
+                              filled: true,
+                              fillColor: Colors.white70,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                                minimumSize: Size(350, 50),
-                                backgroundColor: Color(0XFF996CF3)),
+                              minimumSize: const Size(350, 50),
+                              backgroundColor: const Color(0XFF996CF3),
+                            ),
                             onPressed: () async {
+                              final newUser = await myAuth.sign_up(
+                                Email.text,
+                                Password.text,
+                              );
 
-                             final newUser = await  myAuth.sign_up(Email.text, Password.text);
+                              await updateAppUser();
 
-                             await updateAppUser();
-
-                              if(newUser != null){
-                                Navigator.pushNamedAndRemoveUntil(context,
-                                    '/home', (Route<dynamic> route) => false);
-                              }else{
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Weak password or user exists")));
+                              if (newUser != null) {
+                                Navigator.pushNamedAndRemoveUntil(
+                                  context,
+                                  '/home',
+                                      (Route<dynamic> route) => false,
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                    Text("Weak password or user exists"),
+                                  ),
+                                );
                               }
-
-
                             },
                             child: Text(
                               'Sign up',
                               style: TextStyle(color: Colors.grey[200]),
-                            )),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(30),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text("Already have an account?  "),
-                            TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: Text(
-                                  "Sign in",
-                                  style: TextStyle(
-                                    color: Color(0XFF996CF3),
-                                    fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(30),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text("Already have an account?  "),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text(
+                                    "Sign in",
+                                    style: TextStyle(
+                                      color: Color(0XFF996CF3),
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
-                                ))
-                          ],
-                        ),
-                      )
-                    ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
