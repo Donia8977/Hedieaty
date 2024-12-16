@@ -87,6 +87,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
       if (widget.gift == null) {
         try {
           final generatedId = await FireStoreHelper().addGift(newGift);
+          newGift['id'] = generatedId;
           print('Gift added successfully with ID: $generatedId');
         } catch (e) {
           print("Error adding gift: $e");

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../controllers/Auth.dart';
 import '../main.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 
 class Sign_up extends StatefulWidget {
@@ -103,12 +105,14 @@ class _Sign_upState extends State<Sign_up> {
 
                               await updateAppUser();
 
-                              if (newUser != null) {
-                                Navigator.pushNamedAndRemoveUntil(
-                                  context,
-                                  '/home',
-                                      (Route<dynamic> route) => false,
-                                );
+                                if (newUser != null) {
+                                  if (mounted) {
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/home',
+                                          (Route<dynamic> route) => false,
+                                    );
+                                  }
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -117,6 +121,8 @@ class _Sign_upState extends State<Sign_up> {
                                   ),
                                 );
                               }
+
+
                             },
                             child: Text(
                               'Sign up',

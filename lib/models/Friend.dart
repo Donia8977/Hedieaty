@@ -38,7 +38,7 @@ class Friend {
     return Friend(
       friendId: data['friendId'] as String,
       name: data['name'] as String,
-      profilePic: data['profilePic'] as String? ?? 'images/3430601_avatar_female_normal_woman_icon.png',
+      profilePic: data['profilePic'] as String? ?? '',
       upcomingEvents: data['upcomingEvents'] as int? ?? 0,
       userId: '',
       gender: data['gender'] as String? ?? 'Male',

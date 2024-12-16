@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -157,14 +158,33 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
       print("Gift status updated successfully in Firestore.");
 
       if (newStatus == 'Pledged') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyPledgedGiftsPage(
-              friendId: widget.friendId,
-              eventId: widget.eventId,),
-          ),
-        );
+        final currentUser = FirebaseAuth.instance.currentUser;
+
+        final pledgedGift = {
+          'giftId': giftToUpdate.id,
+          'friendId': widget.eventId,
+          'eventId': widget.eventId,
+          'userId': currentUser?.uid,
+        };
+
+        await firestore.collection('pledgedGift').add(pledgedGift);
+        print('Gift pledged and added to pledgedGift collection.');
+
+
+      }else{
+
+        final pledgedGiftQuery = await firestore
+            .collection('pledgedGift')
+            .where('giftId', isEqualTo: giftId)
+            .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+            .get();
+
+        for (var doc in pledgedGiftQuery.docs) {
+          await firestore.collection('pledgedGift').doc(doc.id).delete();
+          print('Removed gift from pledgedGift collection.');
+        }
+
+
 
       }
     } catch (e) {
@@ -177,49 +197,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     await _loadGifts();
   }
 
-  // Future<void> _loadPledgedGifts() async {
-  //   setState(() {
-  //     isLoading = true;
-  //   });
-  //
-  //   try {
-  //     // Fetch all gifts with status 'Pledged' and the specified eventId and friendId
-  //     Query query = firestore.collection('giftLists').where('status', isEqualTo: 'Pledged');
-  //
-  //     if (widget.eventId != null) {
-  //       query = query.where('eventId', isEqualTo: widget.eventId);
-  //     }
-  //     if (widget.friendId != null) {
-  //       query = query.where('friendId', isEqualTo: widget.friendId);
-  //     }
-  //
-  //     final querySnapshot = await query.get();
-  //
-  //     final List<Gift> fetchedGifts = querySnapshot.docs.map((doc) {
-  //       final data = doc.data() as Map<String, dynamic>;
-  //       return Gift(
-  //         id: doc.id,
-  //         name: data['name'],
-  //         category: data['category'],
-  //         price: data['price'].toDouble(),
-  //         status: data['status'],
-  //         eventId: data['eventId'],
-  //         friendName: data['friendName'] ?? '',
-  //       );
-  //     }).toList();
-  //
-  //     setState(() {
-  //       gifts = fetchedGifts;
-  //       isLoading = false;
-  //     });
-  //   } catch (e) {
-  //     print("Error loading pledged gifts: $e");
-  //     setState(() {
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
-  //
 
   void sortGifts(String criteria) {
     setState(() {
@@ -533,7 +510,13 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                                   );
                                 }).toList(),
                                 onChanged: (newStatus) async {
-                                  if (newStatus != null) {
+                                  if (newStatus != null && newStatus !=gift.status) {
+                                    if (newStatus == 'Pledged' && gift.status != 'Available') {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Only available gifts can be pledged.')),
+                                      );
+                                      return;
+                                    }
                                     await updateGiftStatus(index, newStatus);
                                   }
                                 },

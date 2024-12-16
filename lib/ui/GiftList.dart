@@ -299,6 +299,25 @@ class _GiftListPageState extends State<GiftListPage> {
     );
   }
 
+  Future<void> _navigateToGiftDetails(Gift gift) async {
+    final updatedGift = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GiftDetailsPage(gift: gift.toMap()),
+      ),
+    );
+
+    if (updatedGift != null) {
+      // Update the gift in the local list
+      setState(() {
+        final index = gifts.indexWhere((g) => g.id == updatedGift['id']);
+        if (index != -1) {
+          gifts[index] = Gift.fromMap(updatedGift);
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     print('Gifts List in Build: $gifts');
@@ -400,13 +419,14 @@ class _GiftListPageState extends State<GiftListPage> {
                                 ],
                               ),
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        GiftDetailsPage(gift: gift.toMap()),
-                                  ),
-                                );
+                                // Navigator.push(
+                                //   context,
+                                //   MaterialPageRoute(
+                                //     builder: (context) =>
+                                //         GiftDetailsPage(gift: gift.toMap()),
+                                //   ),
+                                // );
+                                _navigateToGiftDetails(gift);
                               },
                             ),
                           );

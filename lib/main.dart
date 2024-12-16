@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:hedieaty/ui/FriendEventList.dart';
 import 'package:hedieaty/ui/Sign_in.dart';
@@ -19,6 +20,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'controllers/FireStoreHelper.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
 
 AppUser? appUser;
 Future<void> updateAppUser() async {
@@ -54,6 +59,33 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  // Initialize Flutter Local Notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      print("Notification tapped with payload: ${response.payload}");
+    },
+  );
+
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+
   await updateAppUser();
 
   runApp(
@@ -86,6 +118,33 @@ void main() async {
   );
 }
 
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling background message: ${message.messageId}");
+}
+
+void _showNotification(String friendName) async {
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'friend_channel',
+    'Friend Notifications',
+    importance: Importance.high,
+    priority: Priority.high,
+  );
+
+  const NotificationDetails notificationDetails = NotificationDetails(
+    android: androidDetails,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    'New Friend Added',
+    'You added $friendName as a friend!',
+    notificationDetails,
+  );
+}
+
+
+
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
@@ -95,6 +154,7 @@ class _HomePageState extends State<HomePage> {
   final uuid = Uuid();
   bool isLoading = true;
 
+
   @override
   void initstate() {
     super.initState();
@@ -103,6 +163,14 @@ class _HomePageState extends State<HomePage> {
         print('=========================User is currently signed out!');
       } else {
         print('============================User is signed in!');
+      }
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
+        String notificationContent = '${message.notification!.title ?? 'Notification'}: ${message.notification!.body ?? 'You received a notification'}';
+        _showNotification(notificationContent);
       }
     });
   }
@@ -116,6 +184,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadFriends();
+
   }
 
   Future<void> _loadFriends() async {
@@ -236,6 +305,8 @@ class _HomePageState extends State<HomePage> {
     TextEditingController emailController = TextEditingController();
     String name = "";
     String phone = "";
+    String selectedGender = 'male';
+    final genderOptions = ['male', 'female'];
 
     showDialog(
       context: context,
@@ -257,12 +328,28 @@ class _HomePageState extends State<HomePage> {
               controller: emailController,
               decoration: InputDecoration(labelText: "Friend's Email"),
             ),
+            SizedBox(height: 16),
+            DropdownButton<String>(
+              value: selectedGender,
+              items: genderOptions.map((String gender) {
+                return DropdownMenuItem<String>(
+                  value: gender,
+                  child: Text(gender.toUpperCase()),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  selectedGender = newValue;
+                }
+              },
+            ),
           ],
         ),
         actions: [
           TextButton(
             child: Text("Cancel"),
             onPressed: () => Navigator.pop(context),
+
           ),
           ElevatedButton(
             child: Text("Add"),
@@ -280,14 +367,19 @@ class _HomePageState extends State<HomePage> {
                   final currentUser = FirebaseAuth.instance.currentUser;
 
                   if (currentUser != null) {
+                    String profilePic = selectedGender == 'male'
+                        ? 'images/male_iocn.png'
+                        : 'images/3430601_avatar_female_normal_woman_icon.png';
+
                     final friend = {
                       'friendId': friendDoc.id,
                       'name': friendData['name'],
-                      'profilePic': 'images/default_profile.png',
+                      'profilePic': profilePic,
                       'upcomingEvents': '',
                       'userId': currentUser.uid,
                     };
                     await FireStoreHelper().addFriend(currentUser.uid, friend);
+                    _showNotification(friendData['name']);
                     _loadFriends();
                     Navigator.pop(context);
                   }
@@ -689,6 +781,51 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// void _listenForFriendNotifications() {
+//   final currentUser = FirebaseAuth.instance.currentUser;
+//
+//   if (currentUser != null) {
+//     FirebaseFirestore.instance
+//         .collection('friends')
+//         .where('userId', isEqualTo: currentUser.uid)
+//         .snapshots()
+//         .listen((QuerySnapshot snapshot) {
+//       for (var change in snapshot.docChanges) {
+//         if (change.type == DocumentChangeType.added) {
+//           final newFriend = change.doc.data() as Map<String, dynamic>;
+//           print("New friend added: ${newFriend['name']}");
+//           _showNotification(newFriend['name']);
+//         }
+//       }
+//     });
+//   }
+// }
+// void _testNotification() {
+//   _showNotification("Test Friend");
+// }
+//
+//
+//
+// void _showNotification(String friendName) async {
+//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+//     'friend_channel', // Channel ID
+//     'Friend Notifications', // Channel Name
+//     importance: Importance.high,
+//     priority: Priority.high,
+//   );
+//
+//   const NotificationDetails notificationDetails =
+//   NotificationDetails(android: androidDetails);
+//
+//   await flutterLocalNotificationsPlugin.show(
+//     0, // Notification ID
+//     'New Friend Added', // Notification Title
+//     'You added $friendName as a friend!', // Notification Body
+//     notificationDetails,
+//   );
+// }
+
+
 // class _selectContactFromList {
 // }
 //
@@ -764,7 +901,16 @@ class FriendSearchDelegate extends SearchDelegate {
               ? "Upcoming Events: ${friend.upcomingEvents}"
               : "No Upcoming Events"),
           onTap: () {
-            close(context, null);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FriendEventList(
+                  userId: FirebaseAuth.instance.currentUser!.uid,
+                  friendId: friend.friendId,
+                  friendName: friend.name,
+                ),
+              ),
+            );
           },
         );
       },

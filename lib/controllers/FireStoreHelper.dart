@@ -169,19 +169,64 @@ class FireStoreHelper{
     }
   }
 
-  Future<void> deleteEvent(String id) async {
+  // Future<void> deleteEvent(String id) async {
+  //
+  //    try{
+  //      await firestore.collection('events').doc(id).delete();
+  //      print("Event deleted successfully!");
+  //
+  //    }
+  //    catch(e){
+  //
+  //      print("Error deleting event: $e");
+  //    }
+  //
+  // }
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      final eventDoc = await firestore.collection('events').doc(eventId).get();
 
-     try{
-       await firestore.collection('events').doc(id).delete();
-       print("Event deleted successfully!");
+      if (eventDoc.exists) {
+        final eventData = eventDoc.data();
+        final userId = eventData?['userId'];
 
-     }
-     catch(e){
+        if (userId != null) {
+          await firestore.collection('events').doc(eventId).delete();
+          print("Event deleted successfully!");
 
-       print("Error deleting event: $e");
-     }
+          final friendQuery = await firestore
+              .collection('friends')
+              .where('friendId', isEqualTo: userId)
+              .get();
 
+          for (var friendDoc in friendQuery.docs) {
+            final friendRef = friendDoc.reference;
+
+            await firestore.runTransaction((transaction) async {
+              final friendSnapshot = await transaction.get(friendRef);
+
+              if (friendSnapshot.exists) {
+                final currentUpcomingEvents = friendSnapshot['upcomingEvents'] ?? 0;
+                if (currentUpcomingEvents > 0) {
+                  transaction.update(friendRef, {
+                    'upcomingEvents': currentUpcomingEvents - 1,
+                  });
+                  print("Decremented upcomingEvents for a friend.");
+                }
+              }
+            });
+          }
+        } else {
+          print("Error: userId is null in the event data.");
+        }
+      } else {
+        print("Error: Event with ID $eventId does not exist.");
+      }
+    } catch (e) {
+      print("Error deleting event: $e");
+    }
   }
+
 
 
 /////////////////////////////////////////////////////////////////////////////

@@ -131,7 +131,17 @@ void initState() {
   Widget _buildProfileInfo(AppUser user, BuildContext context) {
     return Card(
       child: ListTile(
-        leading: CircleAvatar(child: Icon(Icons.person)),
+       // leading: CircleAvatar(child: Icon(Icons.person)),
+        leading: CircleAvatar(
+          backgroundImage: AssetImage(
+            user.profilePic != null && user.profilePic!.isNotEmpty
+                ? user.profilePic!
+                : 'images/bro sora .png',
+          ),
+          // child: user.profilePic == null || user.profilePic!.isEmpty
+          //     ? Icon(Icons.person, size: 40)
+          //     : null,
+        ),
         title: Text(user.name ?? " No name "),
         subtitle: Text(user.email ?? " No email"),
         trailing: IconButton(
