@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 import '../main.dart';
 import '../models/Gift.dart';
 
-const String fileName = "hedieaydb2.db";
+const String fileName = "newData.db";
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -52,75 +52,91 @@ class DatabaseHelper {
   }
 
   Future<void> _createDB(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE Users (
-        id TEXT PRIMARY KEY, 
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        preferences TEXT
-      );
-      ''');
 
     await db.execute('''
-  CREATE TABLE Friends (
-        userId TEXT NOT NULL, 
-        friendId TEXT NOT NULL, 
-        name TEXT NOT NULL,
-        profilePic TEXT NOT NULL,
-        upcomingEvents INTEGER NOT NULL,
-        PRIMARY KEY (userId, friendId),
-        FOREIGN KEY (userId) REFERENCES Users (id),
-        FOREIGN KEY (friendId) REFERENCES Users (id)
-  );
+    CREATE TABLE Users (
+      id TEXT PRIMARY KEY, 
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      phoneNumber TEXT,
+      profilePic TEXT,
+      notificationsEnabled INTEGER NOT NULL DEFAULT 1
+    );
   ''');
 
     await db.execute('''
-      CREATE TABLE Events (
-         id TEXT PRIMARY KEY, 
-        name TEXT NOT NULL,
-        date TEXT NOT NULL,
-        location TEXT,
-        description TEXT,
-        userId TEXT,
-        category TEXT,
-        status TEXT,
-        FOREIGN KEY (userId) REFERENCES Users (id)
-      );
-    ''');
+    CREATE TABLE Friends (
+      userId TEXT NOT NULL, 
+      friendId TEXT NOT NULL, 
+      name TEXT NOT NULL,
+      profilePic TEXT NOT NULL,
+      upcomingEvents INTEGER NOT NULL,
+      gender TEXT NOT NULL,
+      PRIMARY KEY (userId, friendId),
+      FOREIGN KEY (userId) REFERENCES Users (id)
+    );
+  ''');
 
+    await db.execute('''
+    CREATE TABLE Events (
+      id TEXT PRIMARY KEY, 
+      name TEXT NOT NULL,
+      date TEXT NOT NULL,
+      location TEXT,
+      description TEXT,
+      userId TEXT NOT NULL,
+      category TEXT NOT NULL,
+      status TEXT NOT NULL,
+      FOREIGN KEY (userId) REFERENCES Users (id)
+    );
+  ''');
+
+    await db.execute('''
+    CREATE TABLE Gifts (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT NOT NULL,
+      price REAL NOT NULL,
+      status TEXT NOT NULL,
+      eventId TEXT NOT NULL,
+      friendName TEXT NOT NULL,
+      imageBase64 TEXT,
+      userStatuses TEXT,
+      FOREIGN KEY (eventId) REFERENCES Events (id)
+    );
+  ''');
 
 
     await db.execute('''
-      CREATE TABLE Gifts (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        price REAL,
-        status TEXT,
-        eventId TEXT, 
-        FOREIGN KEY (eventId) REFERENCES Events (id)
-      );
-    ''');
-
-    await db.execute(
-      '''
-      CREATE TABLE PledgedGifts(
-          id TEXT PRIMARY KEY,             
-          userId TEXT NOT NULL,          
-          giftId TEXT NOT NULL,            
-          friendId TEXT NOT NULL,  
-           eventId TEXT NOT NULL,        
-          FOREIGN KEY (userId) REFERENCES Users (id),  
-          FOREIGN KEY (giftId) REFERENCES Gifts (id),    
-          FOREIGN KEY (friendId) REFERENCES Users (id)
-          FOREIGN KEY (eventId) REFERENCES Events (id)
-
-      );
-
-
-     '''
+    CREATE TABLE PledgedGifts (
+      id TEXT PRIMARY KEY,             
+      userId TEXT NOT NULL,          
+      giftId TEXT NOT NULL,            
+      friendId TEXT NOT NULL,  
+      eventId TEXT NOT NULL,        
+      FOREIGN KEY (userId) REFERENCES Users (id),  
+      FOREIGN KEY (giftId) REFERENCES Gifts (id),    
+      FOREIGN KEY (friendId) REFERENCES Users (id),
+      FOREIGN KEY (eventId) REFERENCES Events (id)
     );
+  ''');
+
+    await db.execute('''
+    CREATE TABLE Notifications (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      receiverId TEXT NOT NULL,
+      senderId TEXT NOT NULL,
+      senderName TEXT NOT NULL,
+      giftName TEXT NOT NULL,
+      eventId TEXT,
+      isRead INTEGER NOT NULL DEFAULT 0
+    );
+  ''');
+
+
 
   }
 

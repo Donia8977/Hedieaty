@@ -11,8 +11,6 @@ import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hedieaty/models/AppNotification.dart';
 
-import 'GiftDetails.dart';
-import 'PledgedGifts.dart';
 
 
 class Friendgiftlist extends StatefulWidget {
@@ -45,54 +43,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     _loadGifts();
   }
 
-  // Future<void> _loadGifts() async {
-  //   final currentUser = FirebaseAuth.instance.currentUser;
-  //
-  //   if (currentUser == null) {
-  //     print("Error: User not logged in.");
-  //     return;
-  //   }
-  //
-  //   try {
-  //     final snapshot = await FirebaseFirestore.instance.collection('giftLists').get();
-  //
-  //     setState(() {
-  //       gifts = snapshot.docs
-  //           .map((doc) {
-  //         final data = doc.data() as Map<String, dynamic>;
-  //
-  //         if (data['name'] == null || data['name'].toString().trim().isEmpty) {
-  //           print("Skipping gift with empty name: ${doc.id}");
-  //           return null;
-  //         }
-  //
-  //         if (data['price'] == null || data['price'].toString().trim().isEmpty) {
-  //           print("Skipping gift with invalid price: ${doc.id}");
-  //           return null;
-  //         }
-  //
-  //         String userStatus = (data['userStatuses'] as Map<String, dynamic>?)
-  //         ?[currentUser.uid] ??
-  //             'Available';
-  //
-  //         data['status'] = userStatus;
-  //
-  //         return Gift.fromMap({
-  //           ...data,
-  //           'id': doc.id,
-  //         });
-  //       })
-  //           .where((gift) => gift != null)
-  //           .cast<Gift>()
-  //           .toList();
-  //     });
-  //
-  //     print("Gifts loaded successfully for user ${currentUser.uid}.");
-  //   } catch (e) {
-  //     print("Error loading gifts: $e");
-  //   }
-  // }
-
   Future<void> _loadGifts() async {
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -102,7 +52,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     }
 
     try {
-      // Filter the query by friendId and eventId
+
       final snapshot = await FirebaseFirestore.instance
           .collection('giftLists')
           .where('eventId', isEqualTo: widget.eventId)
@@ -279,6 +229,16 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
           print("Gift already pledged by this user.");
         }
       }
+
+
+      final dbHelper = DatabaseHelper();
+      giftToUpdate.status = newStatus;
+      await dbHelper.updateGift(giftToUpdate);
+
+      await syncFirestoreToSQLite();
+      print("Gift status updated to '$newStatus' in SQLite.");
+
+
     } catch (e) {
       print("Error updating gift status: $e");
     }
@@ -325,34 +285,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
   }
 
 
-
-
-  // void deleteGifts(int index) {
-  //   setState(() {
-  //     gifts.removeAt(index);
-  //   });
-  // }
-
-
-  // Future<void> _openGiftDetails([Map<String, dynamic>? gift]) async {
-  //   final result = await Navigator.push(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (context) => GiftDetailsPage(gift: gift),
-  //     ),
-  //   );
-  //
-  //   // if (result != null) {
-  //   //   setState(() {
-  //   //     gifts.add(result);
-  //   //   });
-  //   // }
-  //
-  //   if (result != null) {
-  //     _loadGifts();
-  //   }
-  // }
-
   void showEditDialog(BuildContext context, int index) {
     final TextEditingController nameController =
         TextEditingController(text: gifts[index].name);
@@ -387,14 +319,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
             ElevatedButton(
 
               onPressed: () async {
-              //   final gift = gifts[index];
-              //   gift.name = nameController.text;
-              //   gift.category = categoryController.text;
-              //
-              //   await _dbHelper.updateGift(gift);
-              //   _loadGifts();
-              //   Navigator.pop(context);
-              // },
 
                 final gift = gifts[index];
                 final updatedData = {
@@ -573,12 +497,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                                   }
                                 },
                               ),
-                              // IconButton(
-                              //   icon: Icon(Icons.delete),
-                              //   onPressed: () {
-                              //     deleteGifts(index);
-                              //   },
-                              // ),
                             ],
                           ),
                           onTap: () {
@@ -594,6 +512,46 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
 
     );
   }
+
+  Future<void> syncFirestoreToSQLite() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      print("Error: User not logged in.");
+      return;
+    }
+
+    try {
+      final dbHelper = DatabaseHelper();
+      final snapshot = await FirebaseFirestore.instance.collection('giftLists').get();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final giftId = doc.id;
+
+        final userStatuses = data['userStatuses'] as Map<String, dynamic>? ?? {};
+        final userStatus = userStatuses[currentUser.uid] ?? 'Available';
+
+        final gift = Gift.fromMap({
+          'id': giftId,
+          'name': data['name'] ?? '',
+          'description': data['description'] ?? '',
+          'category': data['category'] ?? '',
+          'price': (data['price'] as num?)?.toDouble() ?? 0.0,
+          'status': userStatus,
+          'eventId': data['eventId'] ?? '',
+          'friendName': data['friendName'] ?? '',
+          'imageBase64': data['imageBase64'] ?? '',
+          'userStatuses': data['userStatuses'],
+        });
+
+        await dbHelper.updateGift(gift);
+      }
+      print("Firestore data synced to SQLite successfully.");
+    } catch (e) {
+      print("Error syncing Firestore to SQLite: $e");
+    }
+  }
+
 }
 
 PopupMenuItem<String> _buildMenuItem(String text, String route) {

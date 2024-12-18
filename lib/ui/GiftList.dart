@@ -477,7 +477,7 @@ class _GiftListPageState extends State<GiftListPage> {
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          //  var res =  DatabaseHelper().deleteDatabaseFile();
+           // var res =  DatabaseHelper().deleteDatabaseFile();
           showAddGiftDialog(context);
         },
         child: Icon(Icons.add),
