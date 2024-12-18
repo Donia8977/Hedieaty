@@ -117,8 +117,8 @@ class DatabaseHelper {
           FOREIGN KEY (eventId) REFERENCES Events (id)
 
       );
-      
-      
+
+
      '''
     );
 

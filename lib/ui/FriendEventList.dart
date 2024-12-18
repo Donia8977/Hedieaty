@@ -258,7 +258,7 @@ class _FriendEventListState extends State<FriendEventList> {
                       userId: event.userId,
                     );
 
-                    await DatabaseHelper().updateEvent(updatedEvent);
+                   // await DatabaseHelper().updateEvent(updatedEvent);
                     await  _loadEvents();
 
                     Navigator.of(context).pop();
@@ -339,8 +339,8 @@ class _FriendEventListState extends State<FriendEventList> {
             itemBuilder: (context) => [
               _buildMenuItem('Home', '/home'),
               _buildMenuItem('Event List', '/eventList'),
-              _buildMenuItem('Gift List', '/giftList'),
-              _buildMenuItem('Gift Details', '/giftDetails'),
+              // _buildMenuItem('Gift List', '/giftList'),
+              // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],

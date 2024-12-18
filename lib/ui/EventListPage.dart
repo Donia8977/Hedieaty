@@ -44,9 +44,11 @@ class _EventListPageState extends State<EventListPage> {
   Future<void> _loadEvents() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      setState(() {
-        isLoading = true;
-      });
+      if(mounted) {
+        setState(() {
+          isLoading = true;
+        });
+      }
 
       try {
         QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -54,9 +56,12 @@ class _EventListPageState extends State<EventListPage> {
             .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
             .get();
 
-        setState(() {
-          events = snapshot.docs.map((doc) => AppEvent.fromFirestore(doc)).toList();
-        });
+        if(mounted) {
+          setState(() {
+            events = snapshot.docs.map((doc) => AppEvent.fromFirestore(doc))
+                .toList();
+          });
+        }
         for (var event in events) {
           print("Event ID: ${event.id}, Name: ${event.name}");
         }
@@ -64,14 +69,16 @@ class _EventListPageState extends State<EventListPage> {
         print("Error fetching events: $e");
       }
       finally {
-        setState(() {
-          isLoading = false;
-        });
+        if(mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
     }
   }
 
-
+  final _formKey = GlobalKey<FormState>();
   String _sortOption = 'Name';
 
   void _addEvent() {
@@ -86,44 +93,72 @@ class _EventListPageState extends State<EventListPage> {
 
         return AlertDialog(
           title: Text('Add Event'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: InputDecoration(labelText: 'Name'),
-                onChanged: (value) {
-                  name = value;
-                },
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Name'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Name is required';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) => name = value,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Category'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Category is required';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) => category = value,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Status'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Status is required';
+                      }
+                      const validStatuses = ['Present', 'Future', 'Past'];
+                      if (!validStatuses.contains(value.trim())) {
+                        return 'Status must be Present, Future, or Past';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) => status = value,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Date is required';
+                      }
+                      final dateRegex = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+                      if (!dateRegex.hasMatch(value.trim())) {
+                        return 'Enter date in YYYY-MM-DD format';
+                      }
+                      try {
+                        DateTime.parse(value.trim()); // Validate the date
+                      } catch (_) {
+                        return 'Enter a valid date';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) => date = value,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(labelText: 'Location'),
+                    onChanged: (value) => location = value,
+                  ),
+                ],
               ),
-              TextField(
-                decoration: InputDecoration(labelText: 'Category'),
-                onChanged: (value) {
-                  category = value;
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(labelText: 'Status'),
-                onChanged: (value) {
-                  status = value;
-                },
-              ),
-
-              TextField(
-                decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
-                onChanged: (value) {
-                  date = value;
-                },
-              ),
-
-              TextField(
-                decoration: InputDecoration(labelText: 'Location'),
-                onChanged: (value) {
-                  location = value;
-                },
-              ),
-
-
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -133,12 +168,11 @@ class _EventListPageState extends State<EventListPage> {
               child: Text('Cancel'),
             ),
             TextButton(
-
               onPressed: () async {
-                if (name.isNotEmpty && category.isNotEmpty && status.isNotEmpty ) {
+                if (_formKey.currentState?.validate() ?? false) {
+                  // Proceed only if the form is valid
                   final currentUser = FirebaseAuth.instance.currentUser;
-                  if (currentUser!= null) {
-
+                  if (currentUser != null) {
                     final eventData = {
                       'name': name,
                       'category': category,
@@ -149,33 +183,110 @@ class _EventListPageState extends State<EventListPage> {
                     };
 
                     await fireStoreHelper.addEvents(currentUser.uid, eventData);
-                    _loadEvents();
+                    _loadEvents(); // Reload events
                   }
-                  // final newEvent = AppEvent(
-                  //   id: DateTime.now().toString(),
-                  //   date: date,
-                  //   location: location,
-                  //   name: name,
-                  //   category: category,
-                  //   status: status,
-                  //   userId: uuid.v4(),
-                  // );
-                  // await DatabaseHelper().addEvents(newEvent);
-                  // _loadEvents();
-                  // setState(() {
-                  //   events.add(newEvent);
-                  // });
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the dialog
                 }
               },
-
-
               child: Text('Add'),
             ),
           ],
         );
       },
     );
+
+    //     return AlertDialog(
+    //       title: Text('Add Event'),
+    //       content: Column(
+    //         mainAxisSize: MainAxisSize.min,
+    //         children: [
+    //           TextField(
+    //             decoration: InputDecoration(labelText: 'Name'),
+    //             onChanged: (value) {
+    //               name = value;
+    //             },
+    //           ),
+    //           TextField(
+    //             decoration: InputDecoration(labelText: 'Category'),
+    //             onChanged: (value) {
+    //               category = value;
+    //             },
+    //           ),
+    //           TextField(
+    //             decoration: InputDecoration(labelText: 'Status'),
+    //             onChanged: (value) {
+    //               status = value;
+    //             },
+    //           ),
+    //
+    //           TextField(
+    //             decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+    //             onChanged: (value) {
+    //               date = value;
+    //             },
+    //           ),
+    //
+    //           TextField(
+    //             decoration: InputDecoration(labelText: 'Location'),
+    //             onChanged: (value) {
+    //               location = value;
+    //             },
+    //           ),
+    //
+    //
+    //         ],
+    //       ),
+    //       actions: [
+    //         TextButton(
+    //           onPressed: () {
+    //             Navigator.of(context).pop();
+    //           },
+    //           child: Text('Cancel'),
+    //         ),
+    //         TextButton(
+    //
+    //           onPressed: () async {
+    //             if (name.isNotEmpty && category.isNotEmpty && status.isNotEmpty ) {
+    //               final currentUser = FirebaseAuth.instance.currentUser;
+    //               if (currentUser!= null) {
+    //
+    //                 final eventData = {
+    //                   'name': name,
+    //                   'category': category,
+    //                   'status': status,
+    //                   'date': date.isNotEmpty ? date : '2024-01-01',
+    //                   'location': location.isNotEmpty ? location : 'No location provided',
+    //                   'userId': currentUser.uid,
+    //                 };
+    //
+    //                 await fireStoreHelper.addEvents(currentUser.uid, eventData);
+    //                 _loadEvents();
+    //               }
+    //               // final newEvent = AppEvent(
+    //               //   id: DateTime.now().toString(),
+    //               //   date: date,
+    //               //   location: location,
+    //               //   name: name,
+    //               //   category: category,
+    //               //   status: status,
+    //               //   userId: uuid.v4(),
+    //               // );
+    //               // await DatabaseHelper().addEvents(newEvent);
+    //               // _loadEvents();
+    //               // setState(() {
+    //               //   events.add(newEvent);
+    //               // });
+    //               Navigator.of(context).pop();
+    //             }
+    //           },
+    //
+    //
+    //           child: Text('Add'),
+    //         ),
+    //       ],
+    //     );
+    //   },
+    // );
   }
 
   void _editEvent(int index) {
@@ -189,6 +300,8 @@ class _EventListPageState extends State<EventListPage> {
             print("Error: Event ID is empty.");
 
           }
+
+          final _editFormKey = GlobalKey<FormState>();
           String name = event.name;
           String category = event.category;
           String status = event.status;
@@ -197,122 +310,231 @@ class _EventListPageState extends State<EventListPage> {
 
           return AlertDialog(
             title: Text('Edit Event'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Name'),
-                  onChanged: (value) {
-                    name = value;
-                  },
-                  initialValue: event.name,
+            content: Form(
+              key: _editFormKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      initialValue: name,
+                      decoration: InputDecoration(labelText: 'Name'),
+                      validator: (value) => value == null || value.trim().isEmpty
+                          ? 'Name is required'
+                          : null,
+                      onChanged: (value) => name = value,
+                    ),
+                    TextFormField(
+                      initialValue: category,
+                      decoration: InputDecoration(labelText: 'Category'),
+                      validator: (value) => value == null || value.trim().isEmpty
+                          ? 'Category is required'
+                          : null,
+                      onChanged: (value) => category = value,
+                    ),
+                    TextFormField(
+                      initialValue: status,
+                      decoration: InputDecoration(labelText: 'Status'),
+                      validator: (value) {
+                        const validStatuses = ['Present', 'Future', 'Past'];
+                        if (value == null || !validStatuses.contains(value.trim())) {
+                          return 'Status must be Present, Future, or Past';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => status = value,
+                    ),
+                    TextFormField(
+                      initialValue: date,
+                      decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                      validator: (value) {
+                        final dateRegex = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+                        if (value == null || !dateRegex.hasMatch(value)) {
+                          return 'Enter date in YYYY-MM-DD format';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => date = value,
+                    ),
+                    TextFormField(
+                      initialValue: location,
+                      decoration: InputDecoration(labelText: 'Location'),
+                      onChanged: (value) => location = value,
+                    ),
+                  ],
                 ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Category'),
-                  onChanged: (value) {
-                    category = value;
-                  },
-                  initialValue: event.category,
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Status'),
-                  onChanged: (value) {
-                    status = value;
-                  },
-                  initialValue: event.status,
-                ),
-
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'location'),
-                  onChanged: (value) {
-                    location = value;
-                  },
-                  initialValue: event.location,
-                ),
-
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
-                  onChanged: (value) {
-                    date = value;
-                  },
-                  initialValue: event.date,
-                ),
-
-              ],
+              ),
             ),
-
             actions: [
               TextButton(
-                onPressed: () {
-
-                  Navigator.of(context).pop();
-                },
-                
+                onPressed: () => Navigator.of(context).pop(),
                 child: Text('Cancel'),
               ),
               TextButton(
                 onPressed: () async {
-                  if (name.isNotEmpty &&
-                      category.isNotEmpty &&
-                      status.isNotEmpty) {
-
+                  if (_editFormKey.currentState?.validate() ?? false) {
                     final updatedData = {
                       'name': name,
                       'category': category,
                       'status': status,
-                      'date': date.isNotEmpty ? date : '2024-01-01',
+                      'date': date,
                       'location':  (location?.isNotEmpty ?? false) ? location : 'No location provided',
                     };
-
-                    print("Updating Event ID: ${event.id}");
 
                     try {
                       await fireStoreHelper.updateEvent(event.id, updatedData);
                       await _loadEvents();
-
-                      //  final updatedEvent = AppEvent(
-                      //    id: event.id,
-                      //    name: name,
-                      //    category: category,
-                      //    status: status,
-                      //    location: location,
-                      //    date: date,
-                      //    userId: event.userId,
-                      //  );
-                      //
-                      // await DatabaseHelper().updateEvent(updatedEvent);
-                      // await  _loadEvents();
-
                       Navigator.of(context).pop();
-                    }
-                    catch (e) {
+                    } catch (e) {
                       print("Error updating event: $e");
                     }
                   }
                 },
-                child: Text('Okay'),
+                child: Text('Save'),
               ),
             ],
-
-
           );
-        });
+        },
+    );
   }
+
+  //         return AlertDialog(
+  //           title: Text('Edit Event'),
+  //           content: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               TextFormField(
+  //                 decoration: InputDecoration(labelText: 'Name'),
+  //                 onChanged: (value) {
+  //                   name = value;
+  //                 },
+  //                 initialValue: event.name,
+  //               ),
+  //               TextFormField(
+  //                 decoration: InputDecoration(labelText: 'Category'),
+  //                 onChanged: (value) {
+  //                   category = value;
+  //                 },
+  //                 initialValue: event.category,
+  //               ),
+  //               TextFormField(
+  //                 decoration: InputDecoration(labelText: 'Status'),
+  //                 onChanged: (value) {
+  //                   status = value;
+  //                 },
+  //                 initialValue: event.status,
+  //               ),
+  //
+  //               TextFormField(
+  //                 decoration: InputDecoration(labelText: 'location'),
+  //                 onChanged: (value) {
+  //                   location = value;
+  //                 },
+  //                 initialValue: event.location,
+  //               ),
+  //
+  //               TextFormField(
+  //                 decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+  //                 onChanged: (value) {
+  //                   date = value;
+  //                 },
+  //                 initialValue: event.date,
+  //               ),
+  //
+  //             ],
+  //           ),
+  //
+  //           actions: [
+  //             TextButton(
+  //               onPressed: () {
+  //
+  //                 Navigator.of(context).pop();
+  //               },
+  //
+  //               child: Text('Cancel'),
+  //             ),
+  //             TextButton(
+  //               onPressed: () async {
+  //                 if (name.isNotEmpty &&
+  //                     category.isNotEmpty &&
+  //                     status.isNotEmpty) {
+  //
+  //                   final updatedData = {
+  //                     'name': name,
+  //                     'category': category,
+  //                     'status': status,
+  //                     'date': date.isNotEmpty ? date : '2024-01-01',
+  //                     'location':  (location?.isNotEmpty ?? false) ? location : 'No location provided',
+  //                   };
+  //
+  //                   print("Updating Event ID: ${event.id}");
+  //
+  //                   try {
+  //                     await fireStoreHelper.updateEvent(event.id, updatedData);
+  //                     await _loadEvents();
+  //
+  //                     //  final updatedEvent = AppEvent(
+  //                     //    id: event.id,
+  //                     //    name: name,
+  //                     //    category: category,
+  //                     //    status: status,
+  //                     //    location: location,
+  //                     //    date: date,
+  //                     //    userId: event.userId,
+  //                     //  );
+  //                     //
+  //                     // await DatabaseHelper().updateEvent(updatedEvent);
+  //                     // await  _loadEvents();
+  //
+  //                     Navigator.of(context).pop();
+  //                   }
+  //                   catch (e) {
+  //                     print("Error updating event: $e");
+  //                   }
+  //                 }
+  //               },
+  //               child: Text('Okay'),
+  //             ),
+  //           ],
+  //
+  //
+  //         );
+  //       });
+  // }
+
+  // void _deleteEvent(int index) async {
+  //   // final String? eventId = events[index].id;
+  //   //
+  //   // await DatabaseHelper().deleteEvent(eventId!);
+  //   // await _loadEvents();
+  //   //
+  //   // setState(() {
+  //   //   events.removeAt(index);
+  //   // });
+  //
+  //   final String eventId = events[index].id;
+  //   await fireStoreHelper.deleteEvent(eventId);
+  //   _loadEvents();
+  // }
 
   void _deleteEvent(int index) async {
-    // final String? eventId = events[index].id;
-    //
-    // await DatabaseHelper().deleteEvent(eventId!);
-    // await _loadEvents();
-    //
-    // setState(() {
-    //   events.removeAt(index);
-    // });
-
     final String eventId = events[index].id;
-    await fireStoreHelper.deleteEvent(eventId);
-    _loadEvents();
+
+    try {
+      await fireStoreHelper.deleteEvent(eventId);
+
+      if (mounted) {
+        setState(() {
+          events.removeAt(index);
+        });
+      }
+
+      await _loadEvents();
+    } catch (e) {
+      print("Error deleting event: $e");
+    }
   }
+
 
   void _sortEvents() {
     setState(() {
@@ -366,7 +588,7 @@ class _EventListPageState extends State<EventListPage> {
             itemBuilder: (context) => [
               _buildMenuItem('Home', '/home'),
               _buildMenuItem('Event List', '/eventList'),
-              _buildMenuItem('Gift Details', '/giftDetails'),
+              // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],

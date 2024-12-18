@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
@@ -7,9 +9,11 @@ import '../controllers/FireStoreHelper.dart';
 import '../models/Gift.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hedieaty/models/AppNotification.dart';
 
 import 'GiftDetails.dart';
 import 'PledgedGifts.dart';
+
 
 class Friendgiftlist extends StatefulWidget {
 
@@ -40,40 +44,54 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     super.initState();
     _loadGifts();
   }
-  //
-  // Future<void> fetchGifts(String eventId) async {
-  //   final dbGifts = await _dbHelper.getGifts(eventId);
-  //   print('Fetched Gifts: $dbGifts');
-  //   setState(() {
-  //     gifts = dbGifts;
-  //   });
-  // }
 
   Future<void> _loadGifts() async {
-    setState(() {
-       isLoading = true;
-    });
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      print("Error: User not logged in.");
+      return;
+    }
 
     try {
-      final fetchedGifts = await FireStoreHelper().fetchGift(widget.eventId);
-      print('Fetched gifts from Firestore: $fetchedGifts');
-      if (mounted) {
-        setState(() {
-          gifts = fetchedGifts.map((giftData) => Gift.fromMap(giftData)).toList();
-          isLoading = false;
-        });
-      }
+      final snapshot = await FirebaseFirestore.instance.collection('giftLists').get();
+
+      setState(() {
+        gifts = snapshot.docs
+            .map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          if (data['name'] == null || data['name'].toString().trim().isEmpty) {
+            print("Skipping gift with empty name: ${doc.id}");
+            return null;
+          }
+
+          if (data['price'] == null || data['price'].toString().trim().isEmpty) {
+            print("Skipping gift with invalid price: ${doc.id}");
+            return null;
+          }
+
+          String userStatus = (data['userStatuses'] as Map<String, dynamic>?)
+          ?[currentUser.uid] ??
+              'Available';
+
+          data['status'] = userStatus;
+
+          return Gift.fromMap({
+            ...data,
+            'id': doc.id,
+          });
+        })
+            .where((gift) => gift != null)
+            .cast<Gift>()
+            .toList();
+      });
+
+      print("Gifts loaded successfully for user ${currentUser.uid}.");
     } catch (e) {
       print("Error loading gifts: $e");
-      if(mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
     }
   }
-
-  //for new version
 
 
   Future<void> addGift(String name, String category, double price) async {
@@ -93,7 +111,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
       final friendData = querySnapshot.docs.first.data();
       final friendName = friendData['name'] ?? 'Unknown';
 
-      // Create the Gift object
+
       final newGift = Gift(
         id: uuid.v4(),
         name: name,
@@ -107,7 +125,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
       print('Adding Gift: ${newGift.toMap()}');
 
       await FireStoreHelper().addGift(newGift.toMap());
-      _loadGifts(); // Refresh the gift list
+      _loadGifts();
     } catch (e) {
       print('Error adding gift: $e');
     }
@@ -127,18 +145,9 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     }
   }
 
-  // Future<void> updateGiftStatus(int index, String status) async {
-  //   final updatedGift = gifts[index];
-  //   // updatedGift.status = status;
-  //   updatedGift.updateStatus(status);
-  //  // await _dbHelper.updateGift(updatedGift);
-  // //  await FireStoreHelper().updateGift(updatedGift);
-  //   _loadGifts(); // Refresh the list
-  // }
 
 
-
-  Future<void> updateGiftStatus(int index, String newStatus) async {
+  Future<void> updateGiftStatus(int index, String newStatus, String friendId) async {
     final Gift giftToUpdate = gifts[index];
     final String? giftId = giftToUpdate.id;
 
@@ -147,55 +156,104 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
       return;
     }
 
-    setState(() {
-      giftToUpdate.updateStatus(newStatus);
-    });
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      print("Error: User not logged in.");
+      return;
+    }
 
     try {
-      await FireStoreHelper().updateGift(giftId, {
-        'status': newStatus,
+
+      final giftRef = FirebaseFirestore.instance.collection('giftLists').doc(giftId);
+
+      await giftRef.update({
+        'userStatuses.${currentUser.uid}': newStatus,
       });
-      print("Gift status updated successfully in Firestore.");
 
-      if (newStatus == 'Pledged') {
-        final currentUser = FirebaseAuth.instance.currentUser;
+      print("Gift status updated to '$newStatus' for user ${currentUser.uid}.");
 
-        final pledgedGift = {
-          'giftId': giftToUpdate.id,
-          'friendId': widget.eventId,
-          'eventId': widget.eventId,
-          'userId': currentUser?.uid,
-        };
-
-        await firestore.collection('pledgedGift').add(pledgedGift);
-        print('Gift pledged and added to pledgedGift collection.');
-
-
-      }else{
-
-        final pledgedGiftQuery = await firestore
+      if (newStatus == 'Available' || newStatus == 'Purchased') {
+        final querySnapshot = await FirebaseFirestore.instance
             .collection('pledgedGift')
             .where('giftId', isEqualTo: giftId)
-            .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+            .where('userId', isEqualTo: currentUser.uid)
             .get();
 
-        for (var doc in pledgedGiftQuery.docs) {
-          await firestore.collection('pledgedGift').doc(doc.id).delete();
-          print('Removed gift from pledgedGift collection.');
+        for (var doc in querySnapshot.docs) {
+          await FirebaseFirestore.instance.collection('pledgedGift').doc(doc.id).delete();
         }
+        print("Pledge removed as gift is now '$newStatus'.");
+      }
 
+      if (newStatus == 'Pledged') {
+        String senderName = await fetchUserName(currentUser.uid);
 
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('pledgedGift')
+            .where('giftId', isEqualTo: giftId)
+            .where('userId', isEqualTo: currentUser.uid)
+            .get();
 
+        if (querySnapshot.docs.isEmpty) {
+          await FirebaseFirestore.instance.collection('pledgedGift').add({
+            'giftId': giftId,
+            'userId': currentUser.uid,
+            'friendId': friendId,
+            'eventId': giftToUpdate.eventId,
+          });
+
+          print("Gift pledged successfully.");
+
+          final notification = AppNotification(
+            id: FirebaseFirestore.instance.collection('notifications').doc().id,
+            title: "Gift Pledged!",
+            body: "Your friend $senderName pledged your gift '${giftToUpdate.name}'.",
+            receiverId: friendId,
+            senderId: currentUser.uid,
+            senderName: senderName,
+            giftName: giftToUpdate.name,
+            eventId: giftToUpdate.eventId,
+            isRead: false,
+          );
+
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(notification.id)
+              .set(notification.toMap());
+
+          print("Notification added to Firestore.");
+        } else {
+          print("Gift already pledged by this user.");
+        }
       }
     } catch (e) {
-      print("Error updating gift status in Firestore: $e");
-      setState(() {
-        giftToUpdate.updateStatus(giftToUpdate.status);
-      });
+      print("Error updating gift status: $e");
     }
 
     await _loadGifts();
   }
+
+
+
+  Future<String> fetchUserName(String userId) async {
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        return data['name'] ?? 'Unknown User';
+      } else {
+        return 'Unknown User';
+      }
+    } catch (e) {
+      print("Error fetching user name: $e");
+      return 'Unknown User';
+    }
+  }
+
 
 
   void sortGifts(String criteria) {
@@ -223,24 +281,24 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
   // }
 
 
-  Future<void> _openGiftDetails([Map<String, dynamic>? gift]) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GiftDetailsPage(gift: gift),
-      ),
-    );
-
-    // if (result != null) {
-    //   setState(() {
-    //     gifts.add(result);
-    //   });
-    // }
-
-    if (result != null) {
-      _loadGifts();
-    }
-  }
+  // Future<void> _openGiftDetails([Map<String, dynamic>? gift]) async {
+  //   final result = await Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => GiftDetailsPage(gift: gift),
+  //     ),
+  //   );
+  //
+  //   // if (result != null) {
+  //   //   setState(() {
+  //   //     gifts.add(result);
+  //   //   });
+  //   // }
+  //
+  //   if (result != null) {
+  //     _loadGifts();
+  //   }
+  // }
 
   void showEditDialog(BuildContext context, int index) {
     final TextEditingController nameController =
@@ -274,10 +332,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              // onPressed: () {
-              //   editGift(index, nameController.text, categoryController.text);
-              //   Navigator.pop(context);
-              // },
 
               onPressed: () async {
               //   final gift = gifts[index];
@@ -307,67 +361,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
               },
 
               child: Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void showAddGiftDialog(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController categoryController = TextEditingController();
-    final TextEditingController priceController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Add New Gift'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: categoryController,
-                decoration: InputDecoration(labelText: 'Category'),
-              ),
-              TextField(
-                controller: priceController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Price'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-
-                final String name = nameController.text;
-                final String category = categoryController.text;
-                final String priceText = priceController.text;
-
-                if (name.isNotEmpty && category.isNotEmpty && priceText.isNotEmpty) {
-                  final double price = double.tryParse(priceText) ?? 0.0;
-
-                  if (price > 0) {
-                    addGift(name, category, price);
-                    Navigator.pop(context);
-                  } else {
-                    print('Invalid price. Please enter a positive number.');
-                  }
-                }
-              },
-              child: Text('Add'),
             ),
           ],
         );
@@ -446,8 +439,8 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
             itemBuilder: (context) => [
               _buildMenuItem('Home', '/home'),
               _buildMenuItem('Event List', '/eventList'),
-              _buildMenuItem('Gift List', '/giftList'),
-              _buildMenuItem('Gift Details', '/giftDetails'),
+              // _buildMenuItem('Gift List', '/giftList'),
+              // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],
@@ -495,6 +488,12 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                       return Card(
                         color: getGiftColor(gift.status),
                         child: ListTile(
+                          leading: CircleAvatar(
+                            radius: 30,
+                            backgroundImage: gift.imageBase64 != null && gift.imageBase64!.isNotEmpty
+                                ? MemoryImage(base64Decode(gift.imageBase64!))
+                                : AssetImage('images/gift.png') as ImageProvider,
+                          ),
                           title: Text(gift.name),
                           subtitle: Text('${gift.category} - ${gift.price}'),
                           trailing: Row(
@@ -517,7 +516,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                                       );
                                       return;
                                     }
-                                    await updateGiftStatus(index, newStatus);
+                                    await updateGiftStatus(index, newStatus , widget.friendId);
                                   }
                                 },
                               ),
@@ -530,13 +529,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                             ],
                           ),
                           onTap: () {
-                            // Navigator.push(
-                            //   context,
-                            //   MaterialPageRoute(
-                            //     builder: (context) =>
-                            //         GiftDetailsPage(gift: gift.toMap()),
-                            //   ),
-                            // );
                             showGiftDetailsBottomSheet(context, gift);
                           },
                         ),
@@ -546,13 +538,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
                 ),
               ],
             ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     // var res =  DatabaseHelper().deleteDatabaseFile();
-      //     showAddGiftDialog(context);
-      //   },
-      //   child: Icon(Icons.add),
-      // ),
+
     );
   }
 }

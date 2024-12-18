@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../controllers/DatabaseHelper.dart';
@@ -21,7 +23,7 @@ class GiftListPage extends StatefulWidget {
 
 
 class _GiftListPageState extends State<GiftListPage> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+ // final DatabaseHelper _dbHelper = DatabaseHelper();
   final FireStoreHelper fireStoreHelper = FireStoreHelper();
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
@@ -229,6 +231,7 @@ class _GiftListPageState extends State<GiftListPage> {
   }
 
   void showAddGiftDialog(BuildContext context) {
+    final _formKey = GlobalKey<FormState>();
     final TextEditingController nameController = TextEditingController();
     final TextEditingController categoryController = TextEditingController();
     final TextEditingController priceController = TextEditingController();
@@ -238,57 +241,80 @@ class _GiftListPageState extends State<GiftListPage> {
       builder: (context) {
         return AlertDialog(
           title: Text('Add New Gift'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: 'Name'),
+          content: Form(
+            key: _formKey, // Assign the form key
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Name Field Validation
+                  TextFormField(
+                    controller: nameController,
+                    decoration: InputDecoration(labelText: 'Name'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 10),
+
+                  // Category Field Validation
+                  TextFormField(
+                    controller: categoryController,
+                    decoration: InputDecoration(labelText: 'Category'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Category is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 10),
+
+                  // Price Field Validation
+                  TextFormField(
+                    controller: priceController,
+                    keyboardType: TextInputType.number, // Number input only
+                    decoration: InputDecoration(labelText: 'Price'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Price is required';
+                      }
+                      final double? price = double.tryParse(value);
+                      if (price == null || price <= 0) {
+                        return 'Enter a valid positive number for price';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ),
-              TextField(
-                controller: categoryController,
-                decoration: InputDecoration(labelText: 'Category'),
-              ),
-              TextField(
-                controller: priceController,
-                keyboardType: TextInputType.number, // Ensure numerical input
-                decoration: InputDecoration(labelText: 'Price'),
-              ),
-            ],
+            ),
           ),
           actions: [
+            // Cancel Button
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
               child: Text('Cancel'),
             ),
+
+            // Add Button
             ElevatedButton(
               onPressed: () {
-                //   print(
-                //       'Name: ${nameController.text}, Category: ${categoryController.text}');
-                //   if (nameController.text.isNotEmpty &&
-                //       categoryController.text.isNotEmpty) {
-                //     addGift(nameController.text, categoryController.text);
-                //     Navigator.pop(context);
-                //   }
-                // },
+                if (_formKey.currentState?.validate() ?? false) {
+                  // Form is valid, proceed to add gift
+                  final String name = nameController.text.trim();
+                  final String category = categoryController.text.trim();
+                  final double price = double.parse(priceController.text.trim());
 
-                final String name = nameController.text;
-                final String category = categoryController.text;
-                final String priceText = priceController.text;
-
-                if (name.isNotEmpty &&
-                    category.isNotEmpty &&
-                    priceText.isNotEmpty) {
-                  final double price = double.tryParse(priceText) ?? 0.0;
-
-                  if (price > 0) {
-                    addGift(name, category, price);
-                    Navigator.pop(context);
-                  } else {
-                    print('Invalid price. Please enter a positive number.');
-                  }
+                  addGift(name, category, price); // Call addGift function
+                  Navigator.pop(context); // Close dialog
+                } else {
+                  print("Form contains errors, please correct them.");
                 }
               },
               child: Text('Add'),
@@ -299,6 +325,7 @@ class _GiftListPageState extends State<GiftListPage> {
     );
   }
 
+
   Future<void> _navigateToGiftDetails(Gift gift) async {
     final updatedGift = await Navigator.push(
       context,
@@ -307,14 +334,17 @@ class _GiftListPageState extends State<GiftListPage> {
       ),
     );
 
+    // if (updatedGift != null) {
+    //   // Update the gift in the local list
+    //   setState(() {
+    //     final index = gifts.indexWhere((g) => g.id == updatedGift['id']);
+    //     if (index != -1) {
+    //       gifts[index] = Gift.fromMap(updatedGift);
+    //     }
+    //   });
+    // }
     if (updatedGift != null) {
-      // Update the gift in the local list
-      setState(() {
-        final index = gifts.indexWhere((g) => g.id == updatedGift['id']);
-        if (index != -1) {
-          gifts[index] = Gift.fromMap(updatedGift);
-        }
-      });
+      await fetchGifts(widget.eventId); // Refresh the list to include updates
     }
   }
 
@@ -332,7 +362,7 @@ class _GiftListPageState extends State<GiftListPage> {
             itemBuilder: (context) => [
               _buildMenuItem('Home', '/home'),
               _buildMenuItem('Event List', '/eventList'),
-              _buildMenuItem('Gift Details', '/giftDetails'),
+             // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],
@@ -388,6 +418,16 @@ class _GiftListPageState extends State<GiftListPage> {
                           return Card(
                             color: getGiftColor(gift.status),
                             child: ListTile(
+
+                              leading: CircleAvatar(
+                                backgroundImage: (gift.imageBase64 != null && gift.imageBase64!.isNotEmpty)
+                                    ? MemoryImage(base64Decode(gift.imageBase64!))
+                                    : AssetImage('images/gift.png') as ImageProvider,
+                                backgroundColor: Colors.grey[200],
+                              ),
+
+
+
                               title: Text(gift.name),
                               subtitle:
                                   Text('${gift.category} - ${gift.price}'),

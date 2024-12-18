@@ -1,5 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:path/path.dart';
+import 'package:hedieaty/main.dart';
 
 import '../models/AppUser.dart';
 
@@ -61,9 +64,18 @@ class MyAuth{
     }
   }
 
-  sign_out() async{
-    await FirebaseAuth.instance.signOut();
+  sign_out(BuildContext context) async {
+    try {
+      await _auth.signOut();
+      Navigator.pushReplacementNamed(context, '/sign_in');
+    } catch (e) {
+      print("Error logging out: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error logging out. Please try again.")),
+      );
+    }
   }
+
 
 
 

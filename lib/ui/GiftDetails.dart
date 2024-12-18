@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -23,6 +25,7 @@ class GiftDetailsPage extends StatefulWidget {
 
 class _GiftDetailsPageState extends State<GiftDetailsPage> {
 
+  final _formKey = GlobalKey<FormState>();
   TextEditingController nameController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   TextEditingController categoryController = TextEditingController();
@@ -31,6 +34,9 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
   bool isEditingAllowed = true;
   File? imageFile;
   final picker = ImagePicker();
+
+  String? imageBase64;
+
 
   @override
   void initState() {
@@ -42,16 +48,16 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
       priceController.text = widget.gift?['price']?.toString() ?? '';
       isPledged = widget.gift?['pledged'] ?? false;
       isEditingAllowed = !isPledged;
-    }
-    else{
 
+      imageBase64 = widget.gift?['imageBase64'];
+    }
+    else {
       nameController.text = '';
       descriptionController.text = '';
       categoryController.text = '';
       priceController.text = '';
       isPledged = false;
       isEditingAllowed = true;
-
     }
   }
 
@@ -60,6 +66,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
     if (pickedFile != null) {
       setState(() {
         imageFile = File(pickedFile.path);
+        imageBase64 = null;
       });
     }
   }
@@ -68,10 +75,18 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
 
 
   Future<void> _saveGift() async {
-    if (nameController.text.isNotEmpty &&
-        descriptionController.text.isNotEmpty &&
-        categoryController.text.isNotEmpty &&
-        priceController.text.isNotEmpty) {
+    // if (nameController.text.isNotEmpty &&
+    //     descriptionController.text.isNotEmpty &&
+    //     categoryController.text.isNotEmpty &&
+    //     priceController.text.isNotEmpty) {
+    if (_formKey.currentState?.validate() ?? false) {
+
+      String? base64Image;
+
+      if (imageFile != null) {
+        base64Image = await convertFileToBase64(imageFile!);
+      }
+
 
       final newGift = {
         'id': widget.gift?['id'] ?? uuid.v4(),
@@ -82,6 +97,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
         'pledged': isPledged,
         'status': isPledged ? 'Pledged' : 'Available',
         'eventId': widget.gift?['eventId'] ?? '',
+        'imageBase64': base64Image ?? imageBase64,
       };
 
       if (widget.gift == null) {
@@ -113,133 +129,126 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
   }
 
 
-
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-        appBar: AppBar(
-      backgroundColor: Color(0XFF996CF3),
-      title: Text('Gift Details', style: TextStyle(color: Colors.white)),
-         // title: Text(gift['name']),
-      actions: [
-        PopupMenuButton<String>(
-          color: Color(0XFF996CF3),
-          onSelected: (String route) => Navigator.pushNamed(context, route),
-          itemBuilder: (context) => [
-            _buildMenuItem('Home', '/home'),
-            _buildMenuItem('Event List', '/eventList'),
-            _buildMenuItem('Gift List', '/giftList'),
-            _buildMenuItem('Gift Details', '/giftDetails'),
-            _buildMenuItem('Profile', '/profile'),
-            _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
-          ],
-        ),
-      ],
-    ),
+      appBar: AppBar(
+        backgroundColor: Color(0XFF996CF3),
+        title: Text('Gift Details', style: TextStyle(color: Colors.white)),
+        // title: Text(gift['name']),
+        actions: [
+          PopupMenuButton<String>(
+            color: Color(0XFF996CF3),
+            onSelected: (String route) => Navigator.pushNamed(context, route),
+            itemBuilder: (context) =>
+            [
+              _buildMenuItem('Home', '/home'),
+              _buildMenuItem('Event List', '/eventList'),
+              // _buildMenuItem('Gift List', '/giftList'),
+              // _buildMenuItem('Gift Details', '/giftDetails'),
+              _buildMenuItem('Profile', '/profile'),
+              _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
+            ],
+          ),
+        ],
+      ),
 
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: 'Gift Name'),
-              enabled: isEditingAllowed,
-            ),
-            SizedBox(height: 10),
-
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: 'Description'),
-              enabled: isEditingAllowed,
-              maxLines: 3,
-            ),
-            SizedBox(height: 10),
-
-            TextField(
-              controller: categoryController,
-              decoration: InputDecoration(labelText: 'Category'),
-              enabled: isEditingAllowed,
-            ),
-            SizedBox(height: 10),
-
-            TextField(
-              controller: priceController,
-              decoration: InputDecoration(labelText: 'Price'),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              enabled: isEditingAllowed,
-            ),
-            SizedBox(height: 10),
-
-            Row(
-              children: [
-                Text('Upload Image:'),
-                SizedBox(width: 10),
-                imageFile == null
-                    ? IconButton(
-                  icon: Icon(Icons.image),
-                  onPressed: isEditingAllowed ? _pickImage : null,
-                )
-                    : Image.file(imageFile!, width: 100, height: 100),
-              ],
-            ),
-            SizedBox(height: 20),
-
-            // Row(
-            //   children: [
-            //     Text('Status:'),
-            //     SizedBox(width: 10),
-            //     Switch(
-            //       value: isPledged,
-            //       onChanged: isEditingAllowed
-            //           ? (value) {
-            //         setState(() {
-            //           isPledged = value;
-            //         });
-            //       }
-            //           : null,
-            //     ),
-            //     Text(isPledged ? 'Pledged' : 'Available'),
-            //   ],
-            // ),
-            SizedBox(height: 20),
-
-            ElevatedButton(
-             // onPressed: _saveGift,
-
-              onPressed: () async {
-                await _saveGift();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GiftListPage(eventId: widget.gift?['eventId'] ?? ''),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: 'Gift Name'),
+                validator: (value) =>
+                value == null || value.trim().isEmpty ? 'Name is required' : null,
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: descriptionController,
+                decoration: InputDecoration(labelText: 'Description'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Description is required'
+                    : null,
+                maxLines: 3,
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: categoryController,
+                decoration: InputDecoration(labelText: 'Category'),
+                validator: (value) =>
+                value == null || value.trim().isEmpty ? 'Category is required' : null,
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: priceController,
+                decoration: InputDecoration(labelText: 'Price'),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  final price = double.tryParse(value ?? '');
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Price is required';
+                  } else if (price == null || price <= 0) {
+                    return 'Enter a valid positive price';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Text('Upload Image:'),
+                  SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: imageFile != null
+                        ? Image.file(imageFile!, width: 100, height: 100)
+                        : (imageBase64 != null && imageBase64!.isNotEmpty)
+                        ? Image.memory(base64Decode(imageBase64!),
+                        width: 100, height: 100)
+                        : Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Icon(Icons.image,
+                            size: 40, color: Colors.grey),
+                      ),
+                    ),
                   ),
-                );
-              },
-              child: Text(widget.gift == null ? 'Add Gift' : 'Update Gift'),
-
-
-
-            ),
-          ],
+                ],
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _saveGift,
+                child: Text(widget.gift == null ? 'Add Gift' : 'Update Gift'),
+              ),
+            ],
+          ),
         ),
       ),
-
     );
-
-
-
-
   }
 }
 
-PopupMenuItem<String> _buildMenuItem(String text, String route) {
-  return PopupMenuItem(
-    value: route,
-    child: Text(
-      text,
-      style: TextStyle(color: Colors.white, fontSize: 15),
-    ),
-  );
-}
+
+  Future<String> convertFileToBase64(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    return base64Encode(bytes);
+  }
+
+  PopupMenuItem<String> _buildMenuItem(String text, String route) {
+    return PopupMenuItem(
+      value: route,
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.white, fontSize: 15),
+      ),
+    );
+  }
+

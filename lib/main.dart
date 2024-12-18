@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:hedieaty/models/AppNotification.dart';
 import 'package:hedieaty/ui/FriendEventList.dart';
 import 'package:hedieaty/ui/Sign_in.dart';
 import 'package:hedieaty/ui/Sign_up.dart';
@@ -21,6 +22,12 @@ import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'controllers/FireStoreHelper.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:hedieaty/controllers/Auth.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+
+MyAuth myAuth = MyAuth();
+
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -58,34 +65,30 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
 
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'gift_channel',
+    'Gift Notifications',
+    description: 'This channel is used for gift notifications.',
+    importance: Importance.max,
+    playSound: true,
   );
 
-  // Initialize Flutter Local Notifications
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  final InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
+  final InitializationSettings initializationSettings =
+  InitializationSettings(android: initializationSettingsAndroid);
 
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      print("Notification tapped with payload: ${response.payload}");
-    },
-  );
-
-
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await FirebaseMessaging.instance.requestPermission();
   await updateAppUser();
 
   runApp(
@@ -116,32 +119,33 @@ void main() async {
       },
     ),
   );
+
+
 }
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  print("Handling background message: ${message.messageId}");
-}
-
-void _showNotification(String friendName) async {
+Future<void> showLocalNotification(String title, String body) async {
   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'friend_channel',
-    'Friend Notifications',
-    importance: Importance.high,
+    'gift_channel', // Must match the created channel ID
+    'Gift Notifications',
+    channelDescription: 'Notifications for pledged gifts',
+    importance: Importance.max,
     priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
   );
 
-  const NotificationDetails notificationDetails = NotificationDetails(
-    android: androidDetails,
-  );
+  const NotificationDetails platformChannelSpecifics =
+  NotificationDetails(android: androidDetails);
 
   await flutterLocalNotificationsPlugin.show(
     0,
-    'New Friend Added',
-    'You added $friendName as a friend!',
-    notificationDetails,
+    title,
+    body,
+    platformChannelSpecifics,
   );
 }
+
+
 
 
 
@@ -153,11 +157,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final uuid = Uuid();
   bool isLoading = true;
+  List<Map<String, dynamic>> notifications = [];
 
 
   @override
-  void initstate() {
+  void initState() {
     super.initState();
+    _fetchUnreadNotifications();
+    checkNotifications();
+    requestNotificationPermission();
+
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
         print('=========================User is currently signed out!');
@@ -166,33 +175,88 @@ class _HomePageState extends State<HomePage> {
       }
     });
 
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (message.notification != null) {
-        print('Message also contained a notification: ${message.notification}');
-        String notificationContent = '${message.notification!.title ?? 'Notification'}: ${message.notification!.body ?? 'You received a notification'}';
-        _showNotification(notificationContent);
+        print("Foreground notification: ${message.notification?.title}");
+
+        showLocalNotification(
+          message.notification!.title ?? "No Title",
+          message.notification!.body ?? "No Body",
+        );
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showLocalNotification("Welcome User", "Enjoy your event !");
+    });
+
+    _listenForNotifications();
+
+    _loadFriends();
+
   }
+
+  Future<void> checkNotifications() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      print("User is not logged in.");
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('receiverId', isEqualTo: currentUser.uid)
+          .where('isRead', isEqualTo: false)
+          //.orderBy('timestamp', descending: true)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final senderName = data['senderName'];
+          final giftName = data['giftName'];
+
+          await showLocalNotification(
+            "Gift Pledged!",
+            "Your friend $senderName pledged your gift \"$giftName\".",
+          );
+
+          // Mark notification as read
+          await doc.reference.update({'isRead': true});
+        }
+      }
+    } catch (e) {
+      print("Error checking notifications: $e");
+    }
+  }
+
+
+
 
   List<Friend> friends = [];
 
   DatabaseHelper _dbHelper = DatabaseHelper();
   FireStoreHelper FirestoreHelper = FireStoreHelper();
   FirebaseFirestore firestore = FirebaseFirestore.instance;
-  @override
-  void initState() {
-    super.initState();
-    _loadFriends();
 
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _loadFriends();
+  //
+  // }
 
   Future<void> _loadFriends() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      setState(() {
-        isLoading = true;
-      });
+      if(mounted) {
+        setState(() {
+          isLoading = true;
+        });
+      }
 
       firestore
           .collection('friends')
@@ -204,10 +268,12 @@ class _HomePageState extends State<HomePage> {
           return Friend.fromFirestore(data);
         }).toList();
 
-        setState(() {
-          friends = updatedFriends;
-          isLoading = false;
-        });
+        if(mounted) {
+          setState(() {
+            friends = updatedFriends;
+            isLoading = false;
+          });
+        }
       });
     }
   }
@@ -379,7 +445,6 @@ class _HomePageState extends State<HomePage> {
                       'userId': currentUser.uid,
                     };
                     await FireStoreHelper().addFriend(currentUser.uid, friend);
-                    _showNotification(friendData['name']);
                     _loadFriends();
                     Navigator.pop(context);
                   }
@@ -455,6 +520,53 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _fetchUnreadNotifications() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('receiverId', isEqualTo: currentUser.uid)
+          .where('isRead', isEqualTo: false)
+          .get();
+
+      final fetchedNotifications = snapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'senderName': doc['senderName'],
+          'giftName': doc['giftName'],
+          'isRead': doc['isRead'],
+        };
+      }).toList();
+
+      setState(() {
+        notifications = fetchedNotifications;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching notifications: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _markNotificationAsRead(String notificationId) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'isRead': true});
+
+    setState(() {
+      notifications.removeWhere((notification) => notification['id'] == notificationId);
+    });
+  }
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -475,276 +587,169 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (context) => [
               _buildMenuItem('Home', '/'),
               _buildMenuItem('Event List', '/eventList'),
-              _buildMenuItem('Gift Details', '/giftDetails'),
+              // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],
           ),
         ],
       ),
-      // body: isLoading
-      //     ? Center(
-      //         child: LoadingAnimationWidget.inkDrop(
-      //           color: Color(0XFF996CF3),
-      //           size: 60,
-      //         ),
-      //       )
-      //     : friends.isEmpty
-      //     ? Center(
-      //   child: Column(
-      //     mainAxisAlignment: MainAxisAlignment.center,
-      //     children: [
-      //       Lottie.asset(
-      //         'animation/purplish.json',
-      //         width: 200,
-      //         height: 200,
-      //         fit: BoxFit.contain,
-      //       ),
-      //
-      //
-      //     ],
-      //   ),
-      // )
-      //     : ListView.builder(
-      //         padding:
-      //             const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      //         itemCount: friends.length + 1,
-      //         itemBuilder: (context, index) {
-      //           if (index == 0) {
-      //             return Padding(
-      //               padding: const EdgeInsets.only(bottom: 16.0),
-      //               child: ElevatedButton(
-      //                 onPressed: () {
-      //                   Navigator.push(
-      //                     context,
-      //                     MaterialPageRoute(
-      //                         builder: (context) => EventListPage()),
-      //                   );
-      //                 },
-      //                 child: Text("Create Your Own Event/List"),
-      //               ),
-      //             );
-      //           } else {
-      //             final friend = friends[index - 1];
-      //             return Padding(
-      //               padding: const EdgeInsets.symmetric(vertical: 4.0),
-      //               child: ListTile(
-      //                 leading: CircleAvatar(
-      //                   backgroundImage: AssetImage(friend.gender == 'male'
-      //                       ? 'images/male_iocn.png'
-      //                       : 'images/3430601_avatar_female_normal_woman_icon.png'),
-      //                 ),
-      //                 title: Text(friend.name),
-      //                 subtitle: Text(friend.upcomingEvents > 0
-      //                     ? "Upcoming Events: ${friend.upcomingEvents}"
-      //                     : "No Upcoming Events"),
-      //                 trailing: Icon(Icons.arrow_forward),
-      //                 onTap: () {
-      //                   Navigator.push(
-      //                     context,
-      //                     MaterialPageRoute(
-      //                         builder: (context) => FriendEventList(
-      //                               userId:
-      //                                   FirebaseAuth.instance.currentUser!.uid,
-      //                               friendId: friend.friendId,
-      //                               friendName: friend.name,
-      //                             )),
-      //                   );
-      //                 },
-      //               ),
-      //             );
-      //           }
-      //         },
-      //       ),
 
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            UserAccountsDrawerHeader(
+              accountName: Text(appUser?.name ?? "User"),
+              accountEmail: Text(appUser?.email ?? "example@example.com"),
+              currentAccountPicture: CircleAvatar(
+                backgroundImage: AssetImage(
+                    'images/bro sora .png'),
+                backgroundColor: Colors.grey[200],
+              ),
+              decoration: BoxDecoration(
+                color: Color(0XFF996CF3),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text("Log Out"),
+              onTap: () async {
+                await myAuth.sign_out(context);
+              },
+            ),
+          ],
+        ),
+      ),
       body: isLoading
           ? Center(
-              child: LoadingAnimationWidget.inkDrop(
-                color: Color(0XFF996CF3),
-                size: 60,
+        child: LoadingAnimationWidget.inkDrop(
+          color: Color(0XFF996CF3),
+          size: 60,
+        ),
+      )
+          : Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EventListPage(),
+                  ),
+                );
+              },
+              child: Text("Create Your Own Event/List"),
+            ),
+          ),
+
+          Expanded(
+            child: friends.isEmpty
+                ? Center(
+              child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Lottie.asset(
+                    'animation/purplish.json',
+                    width: 350,
+                    height: 350,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "No friends found. Add a friend to get started!",
+                    style:
+                    TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ],
+              ),
               ),
             )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EventListPage(),
-                        ),
-                      );
-                    },
-                    child: Text("Create Your Own Event/List"),
-                  ),
-                ),
-                // Show animation or friend list based on condition
-                // Expanded(
-                //   child: friends.isEmpty
-                //       ? Center(
-                //     child: Column(
-                //       mainAxisAlignment: MainAxisAlignment.center,
-                //       children: [
-                //         Lottie.asset(
-                //           'animation/purplish.json',
-                //           width: 350,
-                //           height: 350,
-                //           fit: BoxFit.contain,
-                //         ),
-                //         const SizedBox(height: 20),
-                //         const Text(
-                //           "No friends found. Add a friend to get started!",
-                //           style: TextStyle(fontSize: 16, color: Colors.grey),
-                //         ),
-                //       ],
-                //     ),
-                //   )
-                //       : ListView.builder(
-                //     padding: const EdgeInsets.symmetric(
-                //         vertical: 8.0, horizontal: 16.0),
-                //     itemCount: friends.length,
-                //     itemBuilder: (context, index) {
-                //       final friend = friends[index];
-                //       return Padding(
-                //         padding: const EdgeInsets.symmetric(vertical: 4.0),
-                //         child: ListTile(
-                //           leading: CircleAvatar(
-                //             backgroundImage: AssetImage(friend.gender == 'male'
-                //                 ? 'images/male_iocn.png'
-                //                 : 'images/3430601_avatar_female_normal_woman_icon.png'),
-                //           ),
-                //           title: Text(friend.name),
-                //           subtitle: Text(friend.upcomingEvents > 0
-                //               ? "Upcoming Events: ${friend.upcomingEvents}"
-                //               : "No Upcoming Events"),
-                //           trailing: Icon(Icons.arrow_forward),
-                //           onTap: () {
-                //             Navigator.push(
-                //               context,
-                //               MaterialPageRoute(
-                //                 builder: (context) => FriendEventList(
-                //                   userId:
-                //                   FirebaseAuth.instance.currentUser!.uid,
-                //                   friendId: friend.friendId,
-                //                   friendName: friend.name,
-                //                 ),
-                //               ),
-                //             );
-                //           },
-                //         ),
-                //
-                //
-                //       );
-                //     },
-                //   ),
-                // ),
-
-                Expanded(
-                  child: friends.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Lottie.asset(
-                                'animation/purplish.json',
-                                width: 350,
-                                height: 350,
-                                fit: BoxFit.contain,
-                              ),
-                              const SizedBox(height: 20),
-                              const Text(
-                                "No friends found. Add a friend to get started!",
-                                style:
-                                    TextStyle(fontSize: 16, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8.0, horizontal: 16.0),
-                          itemCount: friends.length,
-                          itemBuilder: (context, index) {
-                            final friend = friends[index];
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4.0),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundImage: AssetImage(friend.gender ==
-                                          'male'
-                                      ? 'images/male_iocn.png'
-                                      : 'images/3430601_avatar_female_normal_woman_icon.png'),
-                                ),
-                                title: Text(friend.name),
-                                subtitle: Text(friend.upcomingEvents > 0
-                                    ? "Upcoming Events: ${friend.upcomingEvents}"
-                                    : "No Upcoming Events"),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.arrow_forward),
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                FriendEventList(
-                                              userId: FirebaseAuth
-                                                  .instance.currentUser!.uid,
-                                              friendId: friend.friendId,
-                                              friendName: friend.name,
-                                            ),
-                                          ),
-                                        );
-                                      },
+                : ListView.builder(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 8.0, horizontal: 16.0),
+              itemCount: friends.length,
+              itemBuilder: (context, index) {
+                final friend = friends[index];
+                return Padding(
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 4.0),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: AssetImage(friend.gender ==
+                          'male'
+                          ? 'images/male_iocn.png'
+                          : 'images/3430601_avatar_female_normal_woman_icon.png'),
+                    ),
+                    title: Text(friend.name),
+                    subtitle: Text(friend.upcomingEvents > 0
+                        ? "Upcoming Events: ${friend.upcomingEvents}"
+                        : "No Upcoming Events"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_forward),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    FriendEventList(
+                                      userId: FirebaseAuth
+                                          .instance.currentUser!.uid,
+                                      friendId: friend.friendId,
+                                      friendName: friend.name,
                                     ),
-                                    IconButton(
-                                      icon:
-                                          Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () async {
-                                        final shouldDelete =
-                                            await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: Text("Delete Friend"),
-                                            content: Text(
-                                                "Are you sure you want to delete ${friend.name}?"),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, false),
-                                                child: Text("Cancel"),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, true),
-                                                child: Text("Delete"),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-
-                                        if (shouldDelete ?? false) {
-                                          await FirestoreHelper.deleteFriend(
-                                              friend.friendId);
-                                          _loadFriends();
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
                               ),
                             );
                           },
                         ),
-                ),
-              ],
-            ),
+                        IconButton(
+                          icon:
+                          Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            final shouldDelete =
+                            await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text("Delete Friend"),
+                                content: Text(
+                                    "Are you sure you want to delete ${friend.name}?"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(
+                                        context, false),
+                                    child: Text("Cancel"),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(
+                                        context, true),
+                                    child: Text("Delete"),
+                                  ),
+                                ],
+                              ),
+                            );
 
+                            if (shouldDelete ?? false) {
+                              await FirestoreHelper.deleteFriend(
+                                  friend.friendId);
+                              _loadFriends();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
@@ -779,7 +784,118 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+
+  Future<List<AppNotification>> fetchNotificationsForUser(String userId) async {
+    if (userId.isEmpty) {
+      print("Error: User ID is empty");
+      return [];
+    }
+
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('receiverId', isEqualTo: userId)
+          .where('isRead', isEqualTo: false)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return AppNotification.fromFirestore(data);
+        }).toList();
+      } else {
+        print("No unread notifications found.");
+        return [];
+      }
+    } catch (e) {
+      print("Error fetching notifications: $e");
+      return [];
+    }
+  }
+
+
+
+
+
+
+  //
+  // Future<void> requestNotificationPermission() async {
+  //   if (await Permission.notification.isDenied) {
+  //     final result = await Permission.notification.request();
+  //
+  //     if (result.isGranted) {
+  //       print("Notification permission granted.");
+  //     } else {
+  //       print("Notification permission denied.");
+  //     }
+  //   }
+  // }
+  Future<void> requestNotificationPermission() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // Request permission for notifications
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      print('Notification permission granted.');
+    } else {
+      print('Notification permission denied.');
+    }
+  }
+
+
+
 }
+
+
+
+
+
+void _listenForNotifications() {
+  final currentUser = FirebaseAuth.instance.currentUser;
+
+  if (currentUser != null) {
+    FirebaseFirestore.instance
+        .collection('notifications')
+        .where('recipientId', isEqualTo: currentUser.uid)
+        //.where('read', isEqualTo: false) // Unread notifications only
+        .snapshots()
+        .listen((QuerySnapshot snapshot) {
+      for (var doc in snapshot.docs) {
+        final notification = doc.data() as Map<String, dynamic>;
+        _showLocalNotification(notification['senderName'], notification['giftName']);
+
+        // Mark notification as read
+      //  doc.reference.update({'read': true});
+      }
+    });
+  }
+}
+
+// void _showLocalNotification(String senderName, String giftName) async {
+//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+//     'gift_channel', // Unique channel ID
+//     'Gift Notifications', // Channel name
+//     importance: Importance.high,
+//     priority: Priority.high,
+//   );
+//
+//   const NotificationDetails notificationDetails = NotificationDetails(
+//     android: androidDetails,
+//   );
+//
+//   await flutterLocalNotificationsPlugin.show(
+//     0, // Notification ID
+//     'Gift Pledged!',
+//     'Your friend $senderName pledged your gift "$giftName".',
+//     notificationDetails,
+//   );
+// }
 
 // void _listenForFriendNotifications() {
 //   final currentUser = FirebaseAuth.instance.currentUser;
@@ -831,6 +947,57 @@ class _HomePageState extends State<HomePage> {
 //
 // class _showManualAddDialog {
 // }
+
+// void _showLocalNotification(String senderName, String giftName) async {
+//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+//     'gift_channel', // Channel ID (must be unique for each channel)
+//     'Gift Notifications', // Channel name
+//     channelDescription: 'Notifications for pledged gifts', // Optional channel description
+//     importance: Importance.max, // High importance to show heads-up notification
+//     priority: Priority.high, // Forces heads-up notification
+//     playSound: true, // Ensure sound is played
+//    // enableVibration: true, // Vibrate when notification is shown
+//     ticker: 'Gift Pledged Notification', // Optional ticker text
+//   );
+//
+//   const NotificationDetails notificationDetails = NotificationDetails(
+//     android: androidDetails,
+//   );
+//
+//   await flutterLocalNotificationsPlugin.show(
+//     0, // Notification ID
+//     'Gift Pledged!', // Notification title
+//     'Your friend $senderName pledged your gift "$giftName".', // Notification body
+//     notificationDetails,
+//   );
+// }
+
+void _showLocalNotification(String title, String body) async {
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'gift_channel', // Channel ID (must match the created channel)
+    'Gift Notifications', // Channel name
+    channelDescription: 'Notifications for pledged gifts', // Channel description
+    importance: Importance.max, // High importance ensures heads-up notification
+    priority: Priority.high, // Forces heads-up display
+    playSound: true, // Plays sound when notification appears
+    enableVibration: true, // Enables vibration
+    ticker: 'Gift Pledged Notification', // Optional ticker text
+    timeoutAfter: 4000, // Auto-dismiss notification after 4 seconds
+  );
+
+  const NotificationDetails notificationDetails = NotificationDetails(
+    android: androidDetails,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    0, // Notification ID (unique for each notification)
+    title, // Notification title
+    body, // Notification body
+    notificationDetails,
+  );
+}
+
+
 
 PopupMenuItem<String> _buildMenuItem(String text, String route) {
   return PopupMenuItem(

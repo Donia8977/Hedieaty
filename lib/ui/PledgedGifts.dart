@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -41,64 +43,6 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
     super.initState();
     _loadPledgedGifts();
   }
-
-
-  // Future<void> _loadPledgedGifts() async {
-  //   setState(() {
-  //     isLoading = true;
-  //   });
-  //
-  //   try {
-  //
-  //     Query query = firestore.collection('pledgedGift').where('userId', isEqualTo: currentUser!.uid);
-  //
-  //     if (widget.friendId != null) {
-  //       query = query.where('friendId', isEqualTo: widget.friendId);
-  //     }
-  //     if (widget.eventId != null) {
-  //       query = query.where('eventId', isEqualTo: widget.eventId);
-  //     }
-  //
-  //     final pledgedGiftsSnapshot = await query.get();
-  //
-  //     final List<Gift> fetchedGifts = [];
-  //     for (var pledgedGiftDoc in pledgedGiftsSnapshot.docs) {
-  //       final pledgedGift = pledgedGiftDoc.data() as Map<String, dynamic>;
-  //
-  //       final friendDoc = await firestore.collection('users').doc(pledgedGift['friendId']).get();
-  //       final friendName = friendDoc.exists && friendDoc.data() != null
-  //           ? friendDoc.data()!['name'] ?? 'Unknown Friend'
-  //           : 'Unknown Friend';
-  //
-  //       final giftDoc = await firestore.collection('giftLists').doc(pledgedGift['giftId']).get();
-  //
-  //       if (giftDoc.exists) {
-  //         final giftData = giftDoc.data() as Map<String, dynamic>;
-  //         fetchedGifts.add(Gift(
-  //           id: pledgedGift['giftId'],
-  //           name: giftData['name'],
-  //           category: giftData['category'],
-  //           price: giftData['price'].toDouble(),
-  //           status: giftData['status'],
-  //           eventId: giftData['eventId'],
-  //           friendName: friendName,
-  //         ));
-  //       }
-  //     }
-  //
-  //     setState(() {
-  //       gifts = fetchedGifts;
-  //       isLoading = false;
-  //     });
-  //   } catch (e) {
-  //     print("Error loading pledged gifts: $e");
-  //     setState(() {
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
-
-  /// the name of the friend does not appear in the pledgedGift
 
   Future<void> _loadPledgedGifts() async {
     setState(() {
@@ -203,8 +147,8 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
               itemBuilder: (context) => [
                 _buildMenuItem('Home', '/home'),
                 _buildMenuItem('Event List', '/eventList'),
-                _buildMenuItem('Gift List', '/giftList'),
-                _buildMenuItem('Gift Details', '/giftDetails'),
+                // _buildMenuItem('Gift List', '/giftList'),
+                // _buildMenuItem('Gift Details', '/giftDetails'),
                 _buildMenuItem('Profile', '/profile'),
                 _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
               ],
@@ -231,6 +175,12 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
           final gift = gifts[index];
           return Card(
             child: ListTile(
+              leading: CircleAvatar(
+                radius: 30,
+                backgroundImage: gift.imageBase64 != null && gift.imageBase64!.isNotEmpty
+                    ? MemoryImage(base64Decode(gift.imageBase64!))
+                    : AssetImage('images/gift.png') as ImageProvider,
+              ),
               title: Text(gift.name),
               subtitle: Text('${gift.category} - ${gift.price}'),
             ),
@@ -262,15 +212,15 @@ class PledgedItemEntity{
 }
 
 
-List<PledgedItemEntity>linkGiftToGiftOwner({required List<Gift> gifts, required List<PledgedGift>pledgedGifts,required List<AppUser> users}){
-  List<PledgedItemEntity> result = [];
-  for (var pledgedGift in pledgedGifts){
-    var giftOwner = users.firstWhere((user)=>user.id == pledgedGift.friendId);
-    var gift = gifts.firstWhere((gift)=>gift.id == pledgedGift.giftId);
-
-    result.add(PledgedItemEntity(gift: gift, giftOwner: giftOwner));
-
-  }
-  return result;
-
-}
+// List<PledgedItemEntity>linkGiftToGiftOwner({required List<Gift> gifts, required List<PledgedGift>pledgedGifts,required List<AppUser> users}){
+//   List<PledgedItemEntity> result = [];
+//   for (var pledgedGift in pledgedGifts){
+//     var giftOwner = users.firstWhere((user)=>user.id == pledgedGift.friendId);
+//     var gift = gifts.firstWhere((gift)=>gift.id == pledgedGift.giftId);
+//
+//     result.add(PledgedItemEntity(gift: gift, giftOwner: giftOwner));
+//
+//   }
+//   return result;
+//
+// }
