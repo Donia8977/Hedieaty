@@ -3,7 +3,7 @@ import '../controllers/Auth.dart';
 import '../main.dart';
 
 class Sign_in extends StatefulWidget {
-  const Sign_in({super.key});
+  const Sign_in({Key? key}) : super(key: key);
 
   @override
   State<Sign_in> createState() => _Sign_inState();
@@ -18,9 +18,12 @@ class _Sign_inState extends State<Sign_in> {
 
 
 
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       backgroundColor: Colors.grey[200],
       body:  Container(
         height: double.infinity,

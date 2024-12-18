@@ -112,6 +112,7 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
             status: giftData['status'],
             eventId: giftData['eventId'],
             friendName: friendName,
+            imageBase64: giftData['imageBase64'],
           ));
         }
       }

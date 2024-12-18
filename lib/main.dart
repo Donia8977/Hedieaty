@@ -97,7 +97,7 @@ void main() async {
       title: 'Hedieaty',
       initialRoute: '/sign_in',
       routes: {
-        '/home': (context) => HomePage(),
+        '/home': (context) => HomePage(key: Key('homePage')),
         '/sign_in': (context) => Sign_in(),
         '/sign_up': (context) => Sign_up(),
         '/eventList': (context) => EventListPage(),
@@ -150,6 +150,7 @@ Future<void> showLocalNotification(String title, String body) async {
 
 
 class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -973,16 +974,17 @@ void _listenForNotifications() {
 // }
 
 void _showLocalNotification(String title, String body) async {
+
   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'gift_channel', // Channel ID (must match the created channel)
-    'Gift Notifications', // Channel name
-    channelDescription: 'Notifications for pledged gifts', // Channel description
-    importance: Importance.max, // High importance ensures heads-up notification
-    priority: Priority.high, // Forces heads-up display
-    playSound: true, // Plays sound when notification appears
-    enableVibration: true, // Enables vibration
-    ticker: 'Gift Pledged Notification', // Optional ticker text
-    timeoutAfter: 4000, // Auto-dismiss notification after 4 seconds
+    'gift_channel',
+    'Gift Notifications',
+    channelDescription: 'Notifications for pledged gifts',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+    ticker: 'Gift Pledged Notification',
+    timeoutAfter: 4000,
   );
 
   const NotificationDetails notificationDetails = NotificationDetails(
@@ -990,9 +992,9 @@ void _showLocalNotification(String title, String body) async {
   );
 
   await flutterLocalNotificationsPlugin.show(
-    0, // Notification ID (unique for each notification)
-    title, // Notification title
-    body, // Notification body
+    0,
+    title,
+    body,
     notificationDetails,
   );
 }

@@ -45,6 +45,54 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     _loadGifts();
   }
 
+  // Future<void> _loadGifts() async {
+  //   final currentUser = FirebaseAuth.instance.currentUser;
+  //
+  //   if (currentUser == null) {
+  //     print("Error: User not logged in.");
+  //     return;
+  //   }
+  //
+  //   try {
+  //     final snapshot = await FirebaseFirestore.instance.collection('giftLists').get();
+  //
+  //     setState(() {
+  //       gifts = snapshot.docs
+  //           .map((doc) {
+  //         final data = doc.data() as Map<String, dynamic>;
+  //
+  //         if (data['name'] == null || data['name'].toString().trim().isEmpty) {
+  //           print("Skipping gift with empty name: ${doc.id}");
+  //           return null;
+  //         }
+  //
+  //         if (data['price'] == null || data['price'].toString().trim().isEmpty) {
+  //           print("Skipping gift with invalid price: ${doc.id}");
+  //           return null;
+  //         }
+  //
+  //         String userStatus = (data['userStatuses'] as Map<String, dynamic>?)
+  //         ?[currentUser.uid] ??
+  //             'Available';
+  //
+  //         data['status'] = userStatus;
+  //
+  //         return Gift.fromMap({
+  //           ...data,
+  //           'id': doc.id,
+  //         });
+  //       })
+  //           .where((gift) => gift != null)
+  //           .cast<Gift>()
+  //           .toList();
+  //     });
+  //
+  //     print("Gifts loaded successfully for user ${currentUser.uid}.");
+  //   } catch (e) {
+  //     print("Error loading gifts: $e");
+  //   }
+  // }
+
   Future<void> _loadGifts() async {
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -54,7 +102,11 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     }
 
     try {
-      final snapshot = await FirebaseFirestore.instance.collection('giftLists').get();
+      // Filter the query by friendId and eventId
+      final snapshot = await FirebaseFirestore.instance
+          .collection('giftLists')
+          .where('eventId', isEqualTo: widget.eventId)
+          .get();
 
       setState(() {
         gifts = snapshot.docs
@@ -92,6 +144,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
       print("Error loading gifts: $e");
     }
   }
+
 
 
   Future<void> addGift(String name, String category, double price) async {
