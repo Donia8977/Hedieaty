@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -196,6 +198,8 @@ class _HomePageState extends State<HomePage> {
 
     _loadFriends();
 
+
+
   }
 
   Future<void> checkNotifications() async {
@@ -225,7 +229,6 @@ class _HomePageState extends State<HomePage> {
             "Your friend $senderName pledged your gift \"$giftName\".",
           );
 
-          // Mark notification as read
           await doc.reference.update({'isRead': true});
         }
       }
@@ -243,12 +246,6 @@ class _HomePageState extends State<HomePage> {
   FireStoreHelper FirestoreHelper = FireStoreHelper();
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _loadFriends();
-  //
-  // }
 
   Future<void> _loadFriends() async {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -278,100 +275,11 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
-  //
-  // void _showManualAddDialog() {
-  //   String name = "";
-  //   String phone = "";
-  //   String selectedGender = 'male';
-  //
-  //   var gender = ['male', 'female '];
-  //
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) => AlertDialog(
-  //       title: Text("Add Friend"),
-  //       content: Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           TextField(
-  //             decoration: InputDecoration(labelText: "Name"),
-  //             onChanged: (value) => name = value,
-  //           ),
-  //           TextField(
-  //             decoration: InputDecoration(labelText: "Phone Number"),
-  //             keyboardType: TextInputType.phone,
-  //             onChanged: (value) => phone = value,
-  //           ),
-  //           DropdownButton<String>(
-  //             value: selectedGender,
-  //             items: gender.map((String gender) {
-  //               return DropdownMenuItem<String>(
-  //                 value: gender,
-  //                 child: Text(gender),
-  //               );
-  //             }).toList(),
-  //             onChanged: (String? newValue) {
-  //               setState(() {
-  //                 selectedGender = newValue!;
-  //               });
-  //             },
-  //           ),
-  //         ],
-  //       ),
-  //       actions: [
-  //         TextButton(
-  //           child: Text("Cancel"),
-  //           onPressed: () => Navigator.pop(context),
-  //         ),
-  //         ElevatedButton(
-  //             child: Text("Add"),
-  //             onPressed: () async {
-  //               if (name.isNotEmpty && phone.isNotEmpty) {
-  //                 final currentUser = FirebaseAuth.instance.currentUser;
-  //                 if (currentUser != null) {
-  //                   final friendId = uuid.v4();
-  //
-  //                   String profilePic = selectedGender == 'male' ? 'images/male_iocn.png' : 'images/3430601_avatar_female_normal_woman_icon.png';
-  //
-  //                   // final newFriend = Friend(
-  //                   //   userId: userId,
-  //                   //   friendId: friendId,
-  //                   //   name: name,
-  //                   //   profilePic: "images/3430601_avatar_female_normal_woman_icon.png",
-  //                   //   upcomingEvents: 0,
-  //                   // );
-  //                   //
-  //                   //
-  //                   // await _dbHelper.insertFriend(newFriend);
-  //                   // _loadFriends();
-  //                   final friendData = {
-  //                     'friendId': friendId,
-  //                     'name': name,
-  //                     'profilePic': profilePic,
-  //                     'upcomingEvents': 0,
-  //                   };
-  //
-  //                   await FirestoreHelper.addFriend(
-  //                       currentUser.uid, friendData);
-  //                   _loadFriends();
-  //
-  //                   Navigator.pop(context);
-  //                 } else {
-  //                   ScaffoldMessenger.of(context).showSnackBar(
-  //                     SnackBar(content: Text("Please fill in all fields.")),
-  //                   );
-  //                 }
-  //               }
-  //             }),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   void _showManualAddDialog() {
     TextEditingController emailController = TextEditingController();
-    String name = "";
-    String phone = "";
+    TextEditingController nameController = TextEditingController();
+    TextEditingController phoneController = TextEditingController();
     String selectedGender = 'male';
     final genderOptions = ['male', 'female'];
 
@@ -383,13 +291,13 @@ class _HomePageState extends State<HomePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
+              controller: nameController,
               decoration: InputDecoration(labelText: "Name"),
-              onChanged: (value) => name = value,
             ),
             TextField(
+              controller: phoneController,
               decoration: InputDecoration(labelText: "Phone Number"),
               keyboardType: TextInputType.phone,
-              onChanged: (value) => phone = value,
             ),
             TextField(
               controller: emailController,
@@ -416,46 +324,67 @@ class _HomePageState extends State<HomePage> {
           TextButton(
             child: Text("Cancel"),
             onPressed: () => Navigator.pop(context),
-
           ),
           ElevatedButton(
             child: Text("Add"),
             onPressed: () async {
               final email = emailController.text.trim();
-              if (email.isNotEmpty) {
-                final userQuery = await FirebaseFirestore.instance
-                    .collection('users')
-                    .where('email', isEqualTo: email)
-                    .get();
+              final name = nameController.text.trim();
+              final phone = phoneController.text.trim();
 
-                if (userQuery.docs.isNotEmpty) {
-                  final friendDoc = userQuery.docs.first;
-                  final friendData = friendDoc.data();
-                  final currentUser = FirebaseAuth.instance.currentUser;
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Name cannot be empty.")),
+                );
+                return;
+              }
 
-                  if (currentUser != null) {
-                    String profilePic = selectedGender == 'male'
-                        ? 'images/male_iocn.png'
-                        : 'images/3430601_avatar_female_normal_woman_icon.png';
+              if (phone.length != 11 || !RegExp(r'^\d+$').hasMatch(phone)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Phone number must be 11 digits.")),
+                );
+                return;
+              }
 
-                    final friend = {
-                      'friendId': friendDoc.id,
-                      'name': friendData['name'],
-                      'profilePic': profilePic,
-                      'upcomingEvents': '',
-                      'userId': currentUser.uid,
-                    };
-                    await FireStoreHelper().addFriend(currentUser.uid, friend);
-                    _loadFriends();
-                    Navigator.pop(context);
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content:
-                            Text("No registered user found with this email.")),
-                  );
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email) ||
+                  !email.endsWith(".com")) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text("Enter a valid email containing '@' and ending with '.com'.")),
+                );
+                return;
+              }
+
+              final userQuery = await FirebaseFirestore.instance
+                  .collection('users')
+                  .where('email', isEqualTo: email)
+                  .get();
+
+              if (userQuery.docs.isNotEmpty) {
+                final friendDoc = userQuery.docs.first;
+                final friendData = friendDoc.data();
+                final currentUser = FirebaseAuth.instance.currentUser;
+
+                if (currentUser != null) {
+                  String profilePic = selectedGender == 'male'
+                      ? 'images/male_iocn.png'
+                      : 'images/3430601_avatar_female_normal_woman_icon.png';
+
+                  final friend = {
+                    'friendId': friendDoc.id,
+                    'name': friendData['name'],
+                    'profilePic': profilePic,
+                    'upcomingEvents': '',
+                    'userId': currentUser.uid,
+                  };
+                  await FireStoreHelper().addFriend(currentUser.uid, friend);
+                  _loadFriends();
+                  Navigator.pop(context);
                 }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("No registered user found with this email.")),
+                );
               }
             },
           ),
@@ -463,6 +392,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
 
   void _selectContactFromList() async {
     bool permissionGranted = await FlutterContacts.requestPermission();
@@ -554,16 +484,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _markNotificationAsRead(String notificationId) async {
-    await FirebaseFirestore.instance
-        .collection('notifications')
-        .doc(notificationId)
-        .update({'isRead': true});
-
-    setState(() {
-      notifications.removeWhere((notification) => notification['id'] == notificationId);
-    });
-  }
 
 
 
@@ -588,7 +508,6 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (context) => [
               _buildMenuItem('Home', '/'),
               _buildMenuItem('Event List', '/eventList'),
-              // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],
@@ -604,8 +523,9 @@ class _HomePageState extends State<HomePage> {
               accountName: Text(appUser?.name ?? "User"),
               accountEmail: Text(appUser?.email ?? "example@example.com"),
               currentAccountPicture: CircleAvatar(
-                backgroundImage: AssetImage(
-                    'images/bro sora .png'),
+                backgroundImage: appUser?.profilePic != null && appUser!.profilePic!.isNotEmpty
+                    ? MemoryImage(base64Decode(appUser!.profilePic!))
+                    : AssetImage('images/bro sora .png') as ImageProvider,
                 backgroundColor: Colors.grey[200],
               ),
               decoration: BoxDecoration(
@@ -787,55 +707,10 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-  Future<List<AppNotification>> fetchNotificationsForUser(String userId) async {
-    if (userId.isEmpty) {
-      print("Error: User ID is empty");
-      return [];
-    }
-
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('notifications')
-          .where('receiverId', isEqualTo: userId)
-          .where('isRead', isEqualTo: false)
-          .get();
-
-      if (snapshot.docs.isNotEmpty) {
-        return snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return AppNotification.fromFirestore(data);
-        }).toList();
-      } else {
-        print("No unread notifications found.");
-        return [];
-      }
-    } catch (e) {
-      print("Error fetching notifications: $e");
-      return [];
-    }
-  }
-
-
-
-
-
-
-  //
-  // Future<void> requestNotificationPermission() async {
-  //   if (await Permission.notification.isDenied) {
-  //     final result = await Permission.notification.request();
-  //
-  //     if (result.isGranted) {
-  //       print("Notification permission granted.");
-  //     } else {
-  //       print("Notification permission denied.");
-  //     }
-  //   }
-  // }
   Future<void> requestNotificationPermission() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    // Request permission for notifications
+
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -850,12 +725,7 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-
 }
-
-
-
-
 
 void _listenForNotifications() {
   final currentUser = FirebaseAuth.instance.currentUser;
@@ -864,114 +734,17 @@ void _listenForNotifications() {
     FirebaseFirestore.instance
         .collection('notifications')
         .where('recipientId', isEqualTo: currentUser.uid)
-        //.where('read', isEqualTo: false) // Unread notifications only
         .snapshots()
         .listen((QuerySnapshot snapshot) {
       for (var doc in snapshot.docs) {
         final notification = doc.data() as Map<String, dynamic>;
         _showLocalNotification(notification['senderName'], notification['giftName']);
 
-        // Mark notification as read
-      //  doc.reference.update({'read': true});
       }
     });
   }
 }
 
-// void _showLocalNotification(String senderName, String giftName) async {
-//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-//     'gift_channel', // Unique channel ID
-//     'Gift Notifications', // Channel name
-//     importance: Importance.high,
-//     priority: Priority.high,
-//   );
-//
-//   const NotificationDetails notificationDetails = NotificationDetails(
-//     android: androidDetails,
-//   );
-//
-//   await flutterLocalNotificationsPlugin.show(
-//     0, // Notification ID
-//     'Gift Pledged!',
-//     'Your friend $senderName pledged your gift "$giftName".',
-//     notificationDetails,
-//   );
-// }
-
-// void _listenForFriendNotifications() {
-//   final currentUser = FirebaseAuth.instance.currentUser;
-//
-//   if (currentUser != null) {
-//     FirebaseFirestore.instance
-//         .collection('friends')
-//         .where('userId', isEqualTo: currentUser.uid)
-//         .snapshots()
-//         .listen((QuerySnapshot snapshot) {
-//       for (var change in snapshot.docChanges) {
-//         if (change.type == DocumentChangeType.added) {
-//           final newFriend = change.doc.data() as Map<String, dynamic>;
-//           print("New friend added: ${newFriend['name']}");
-//           _showNotification(newFriend['name']);
-//         }
-//       }
-//     });
-//   }
-// }
-// void _testNotification() {
-//   _showNotification("Test Friend");
-// }
-//
-//
-//
-// void _showNotification(String friendName) async {
-//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-//     'friend_channel', // Channel ID
-//     'Friend Notifications', // Channel Name
-//     importance: Importance.high,
-//     priority: Priority.high,
-//   );
-//
-//   const NotificationDetails notificationDetails =
-//   NotificationDetails(android: androidDetails);
-//
-//   await flutterLocalNotificationsPlugin.show(
-//     0, // Notification ID
-//     'New Friend Added', // Notification Title
-//     'You added $friendName as a friend!', // Notification Body
-//     notificationDetails,
-//   );
-// }
-
-
-// class _selectContactFromList {
-// }
-//
-// class _showManualAddDialog {
-// }
-
-// void _showLocalNotification(String senderName, String giftName) async {
-//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-//     'gift_channel', // Channel ID (must be unique for each channel)
-//     'Gift Notifications', // Channel name
-//     channelDescription: 'Notifications for pledged gifts', // Optional channel description
-//     importance: Importance.max, // High importance to show heads-up notification
-//     priority: Priority.high, // Forces heads-up notification
-//     playSound: true, // Ensure sound is played
-//    // enableVibration: true, // Vibrate when notification is shown
-//     ticker: 'Gift Pledged Notification', // Optional ticker text
-//   );
-//
-//   const NotificationDetails notificationDetails = NotificationDetails(
-//     android: androidDetails,
-//   );
-//
-//   await flutterLocalNotificationsPlugin.show(
-//     0, // Notification ID
-//     'Gift Pledged!', // Notification title
-//     'Your friend $senderName pledged your gift "$giftName".', // Notification body
-//     notificationDetails,
-//   );
-// }
 
 void _showLocalNotification(String title, String body) async {
 

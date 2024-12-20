@@ -6,19 +6,10 @@ class FireStoreHelper{
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  //  Future<void> addFriend(String userId , Map<String, dynamic> friendData) async {
-  //   try {
-  //     friendData['userId'] = userId;
-  //     await firestore.collection('friends').add(friendData);
-  //     print("Friend added successfully!");
-  //   } catch (e) {
-  //     print("Error adding friend: $e");
-  //   }
-  // }
 
   Future<void> addFriend(String userId, Map<String, dynamic> friendData) async {
     try {
-      // Check if the friend already exists in the user's friend list
+
       final existingFriendQuery = await firestore
           .collection('friends')
           .where('userId', isEqualTo: userId)
@@ -30,7 +21,7 @@ class FireStoreHelper{
         return;
       }
 
-      // Query the friend's existing events to count them
+
       final eventsQuery = await firestore
           .collection('events')
           .where('userId', isEqualTo: friendData['friendId'])
@@ -38,10 +29,8 @@ class FireStoreHelper{
 
       final upcomingEventsCount = eventsQuery.docs.length;
 
-      // Add the `upcomingEvents` field based on the count of the friend's events
       friendData['upcomingEvents'] = upcomingEventsCount;
 
-      // Add the friend to the `friends` collection
       await firestore.collection('friends').add(friendData);
 
       print("Friend added successfully with $upcomingEventsCount upcoming events!");
@@ -64,55 +53,64 @@ class FireStoreHelper{
     }
   }
 
+
+////////////////////////////////////////////////////////////////////
+
   Future<void> deleteFriend(String friendId) async {
     try {
-      QuerySnapshot snapshot = await firestore
+
+      QuerySnapshot friendSnapshot = await firestore
           .collection('friends')
           .where('friendId', isEqualTo: friendId)
           .get();
 
-      for (var doc in snapshot.docs) {
+      for (var doc in friendSnapshot.docs) {
         await doc.reference.delete();
       }
 
-      print("Friend deleted successfully!");
+      QuerySnapshot giftSnapshot = await firestore
+          .collection('giftLists')
+          .where('userStatuses.$friendId', isNotEqualTo: null)
+          .get();
+
+      for (var doc in giftSnapshot.docs) {
+        await doc.reference.update({
+          'userStatuses.$friendId': FieldValue.delete(),
+          'status': 'Available',
+        });
+      }
+
+      QuerySnapshot pledgedGiftSnapshot = await firestore
+          .collection('pledgedGift')
+          .where('friendId', isEqualTo: friendId)
+          .get();
+
+      for (var doc in pledgedGiftSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      print("Friend and associated pledged gifts deleted successfully!");
     } catch (e) {
-      print("Error deleting friend: $e");
+      print("Error deleting friend and resetting gifts: $e");
     }
   }
 
 
 
-
-////////////////////////////////////////////////////////////////////
-
-//
-//    Future<void> addEvents(Map<String, dynamic> eventData)async{
-//
-//      try {
-//        await firestore.collection('events').add(eventData);
-//        print("Event added successfully!");
-//      } catch (e) {
-//        print("Error adding Events: $e");
-//      }
-//
-//
-//    }
-
   Future<void> addEvents(String userId, Map<String, dynamic> eventData) async {
     try {
-      // Add the event to the events collection
+
       final eventDocRef = firestore.collection('events').doc();
       eventData['id'] = eventDocRef.id;
-      eventData['userId'] = userId; // Ensure the event is tied to the correct user
+      eventData['userId'] = userId;
       await eventDocRef.set(eventData);
 
       print("Event added successfully!");
 
-      // Find all users who have this user as a friend and increment their `upcomingEvents`
+
       final friendQuery = await firestore
           .collection('friends')
-          .where('friendId', isEqualTo: userId) // Find all friends of this user
+          .where('friendId', isEqualTo: userId)
           .get();
 
       for (var friendDoc in friendQuery.docs) {
@@ -169,19 +167,7 @@ class FireStoreHelper{
     }
   }
 
-  // Future<void> deleteEvent(String id) async {
-  //
-  //    try{
-  //      await firestore.collection('events').doc(id).delete();
-  //      print("Event deleted successfully!");
-  //
-  //    }
-  //    catch(e){
-  //
-  //      print("Error deleting event: $e");
-  //    }
-  //
-  // }
+
   Future<void> deleteEvent(String eventId) async {
     try {
       final eventDoc = await firestore.collection('events').doc(eventId).get();

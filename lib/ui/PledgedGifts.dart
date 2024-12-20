@@ -32,12 +32,6 @@ class _MyPledgedGiftsPageState extends State<MyPledgedGiftsPage> {
   bool isLoading = true;
   final currentUser = FirebaseAuth.instance.currentUser;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   fetchGifts(widget.eventId);
-  // }
-
   @override
   void initState() {
     super.initState();

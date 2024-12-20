@@ -1,6 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/properties/event.dart';
 import 'package:hedieaty/models/Event.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../controllers/DatabaseHelper.dart';
 import '../models/Gift.dart';
@@ -37,8 +41,6 @@ void initState() {
   currentUser = widget.user;
   _fetchUserData();
 
-  // pledgedGifts = DatabaseHelper.getPledgedGiftsByUserId(currentUser.id!);
-  // createdEvents = DatabaseHelper.getEventsByUserId(currentUser.id!) ;
 }
 
   Future<void> _fetchUserData() async {
@@ -128,29 +130,33 @@ void initState() {
   }
 
 
-  Widget _buildProfileInfo(AppUser user, BuildContext context) {
-    return Card(
-      child: ListTile(
-       // leading: CircleAvatar(child: Icon(Icons.person)),
-        leading: CircleAvatar(
-          backgroundImage: AssetImage(
-            user.profilePic != null && user.profilePic!.isNotEmpty
-                ? user.profilePic!
-                : 'images/bro sora .png',
-          ),
-          // child: user.profilePic == null || user.profilePic!.isEmpty
-          //     ? Icon(Icons.person, size: 40)
-          //     : null,
-        ),
-        title: Text(user.name ?? " No name "),
-        subtitle: Text(user.email ?? " No email"),
-        trailing: IconButton(
-          icon: Icon(Icons.edit),
-          onPressed: () => _showEditProfileDialog(context),
-        ),
+Widget _buildProfileInfo(AppUser user, BuildContext context) {
+  return Card(
+    child: ListTile(
+      leading: CircleAvatar(
+        backgroundImage: user.profilePic != null && user.profilePic!.isNotEmpty
+            ? MemoryImage(base64Decode(user.profilePic!))
+            : AssetImage('images/bro sora .png') as ImageProvider,
       ),
-    );
-  }
+      title: Text(user.name ?? "No name"),
+      subtitle: Text(user.email ?? "No email"),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(Icons.image),
+            onPressed: () => _pickAndUploadImage(context),
+          ),
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () => _showEditProfileDialog(context),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 
 
   void _showEditProfileDialog(BuildContext context) {
@@ -271,81 +277,44 @@ void initState() {
     );
   }
 
+Future<void> _pickAndUploadImage(BuildContext context) async {
+  try {
+    // Pick an image
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
+    if (image == null) {
+      print("No image selected.");
+      return;
+    }
+
+    print("Image selected: ${image.path}");
+
+    final File imageFile = File(image.path);
+    final List<int> imageBytes = await imageFile.readAsBytes();
+
+    final String base64Image = base64Encode(imageBytes);
+
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.id)
+        .update({'profilePic': base64Image});
+
+    setState(() {
+      currentUser.profilePic = base64Image;
+    });
+
+    print("Profile picture updated successfully in Firestore.");
+  } catch (e) {
+    print("Error picking and uploading image: $e");
+  }
+}
 
 
 }
 
-//
-// void _showEditProfileDialog(BuildContext context) {
-//   //final userProvider = Provider.of<UserProvider>(context, listen: false);
-//   final nameController = TextEditingController(text: currentUser.name);
-//   final emailController = TextEditingController(text: currentUser.email);
-//
-//   showDialog(
-//     context: context,
-//     builder: (context) => AlertDialog(
-//       title: Text("Edit Profile"),
-//       content: Column(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           TextField(
-//             controller: nameController,
-//             decoration: InputDecoration(labelText: "Name"),
-//           ),
-//           TextField(
-//             controller: emailController,
-//             decoration: InputDecoration(labelText: "Email"),
-//           ),
-//         ],
-//       ),
-//       actions: [
-//         // TextButton(
-//         //   onPressed: () {
-//         //     // userProvider.updateUser(
-//         //     //   nameController.text,
-//         //     //   emailController.text,
-//         //     //   userProvider.user.notificationsEnabled,
-//         //     // );
-//         //
-//         //     Navigator.pop(context);
-//         //
-//         //   },
-//         //   child: Text("Save"),
-//         // ),
-//
-//
-//         TextButton(
-//           onPressed: () => Navigator.pop(context),
-//           child: Text("Cancel"),
-//         ),
-//
-//         TextButton(onPressed: () async {
-//
-//           setState(() {
-//             currentUser.name = nameController.text;
-//             currentUser.email = emailController.text;
-//           });
-//           await _dbHelper.updateUesrs(currentUser);
-//           Navigator.pop(context);
-//
-//
-//
-//         },
-//
-//
-//
-//
-//
-//
-//
-//             child: Text("Save"))
-//
-//
-//       ],
-//     ),
-//   );
-// }
+
 
 
 

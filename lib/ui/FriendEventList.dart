@@ -38,14 +38,6 @@ class _FriendEventListState extends State<FriendEventList> {
     super.initState();
     _loadEvents();
   }
-  //
-  // Future<void> _loadEvents() async {//id in loadEvents
-  //   final fetchedEvents = await DatabaseHelper.getEvents();
-  //
-  //   setState(() {
-  //     events = fetchedEvents;
-  //   });
-  // }
 
   Future<void> _loadEvents() async {
     setState(() {
@@ -73,219 +65,6 @@ class _FriendEventListState extends State<FriendEventList> {
 
   String _sortOption = 'Name';
 
-  void _addFriendEvent() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        String name = '';
-        String category = '';
-        String status = '';
-        String date = '';
-        String location = '';
-
-        return AlertDialog(
-          title: Text('Add Event'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: InputDecoration(labelText: 'Name'),
-                onChanged: (value) {
-                  name = value;
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(labelText: 'Category'),
-                onChanged: (value) {
-                  category = value;
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(labelText: 'Status'),
-                onChanged: (value) {
-                  status = value;
-                },
-              ),
-
-              TextField(
-                decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
-                onChanged: (value) {
-                  date = value;
-                },
-              ),
-
-              TextField(
-                decoration: InputDecoration(labelText: 'Location'),
-                onChanged: (value) {
-                  location = value;
-                },
-              ),
-
-
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-
-              onPressed: () async {
-                if (name.isNotEmpty && category.isNotEmpty && status.isNotEmpty ) {
-                  // final newEvent = AppEvent(
-                  //   id: DateTime.now().toString(),
-                  //   date: date,
-                  //   location: location,
-                  //   name: name,
-                  //   category: category,
-                  //   status: status,
-                  //   userId: uuid.v4(),
-                  // );
-                  // await DatabaseHelper().addEvents(newEvent);
-                  final newEvent = {
-                    'name': name,
-                    'category': category,
-                    'status': status,
-                    'date': date.isNotEmpty ? date : '2024-01-01',
-                    'location': location.isNotEmpty ? location : 'No location provided',
-                  };
-
-                  await FireStoreHelper().addEventForFriend(
-                    userId: widget.userId,
-                    friendId: widget.friendId,
-                    eventData: newEvent,
-                  );
-
-                  _loadEvents();
-                  // setState(() {
-                  //   events.add(newEvent);
-                  // });
-                  Navigator.of(context).pop();
-                }
-              },
-
-
-              child: Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _editEvent(int index) {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          final AppEvent event = events[index];
-          String name = event.name;
-          String category = event.category;
-          String status = event.status;
-          String? location = event.location;
-          String date = event.date;
-
-          return AlertDialog(
-            title: Text('Edit Event'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Name'),
-                  onChanged: (value) {
-                    name = value;
-                  },
-                  initialValue: event.name,
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Category'),
-                  onChanged: (value) {
-                    category = value;
-                  },
-                  initialValue: event.category,
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Status'),
-                  onChanged: (value) {
-                    status = value;
-                  },
-                  initialValue: event.status,
-                ),
-
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'location'),
-                  onChanged: (value) {
-                    location = value;
-                  },
-                  initialValue: event.location,
-                ),
-
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
-                  onChanged: (value) {
-                    date = value;
-                  },
-                  initialValue: event.date,
-                ),
-
-              ],
-            ),
-
-            actions: [
-              TextButton(
-                onPressed: () {
-
-                  Navigator.of(context).pop();
-                },
-
-                child: Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (name.isNotEmpty &&
-                      category.isNotEmpty &&
-                      status.isNotEmpty) {
-
-                    final updatedEvent = AppEvent(
-                      id: event.id,
-                      name: name,
-                      category: category,
-                      status: status,
-                      location: location,
-                      date: date,
-                      userId: event.userId,
-                    );
-
-                   // await DatabaseHelper().updateEvent(updatedEvent);
-                    await  _loadEvents();
-
-                    Navigator.of(context).pop();
-                  }
-                },
-                child: Text('Okay'),
-              ),
-            ],
-
-
-          );
-        });
-  }
-
-  // void _deleteEvent(int index) async {
-  //   final String? eventId = events[index].id;
-  //
-  //  // await DatabaseHelper().deleteEvent(eventId!);
-  //   if(eventId != null) {
-  //     await FireStoreHelper().deleteEventForFriend(eventId!, widget.friendId);
-  //     await _loadEvents();
-  //   }
-  //
-  //   // setState(() {
-  //   //   events.removeAt(index);
-  //   // });
-  // }
 
   void _sortEvents() {
     setState(() {
@@ -370,10 +149,7 @@ class _FriendEventListState extends State<FriendEventList> {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // IconButton(
-                  //   icon: Icon(Icons.delete, color: Colors.red),
-                  //   onPressed: () => _deleteEvent(index),
-                  // ),
+
                   Icon(Icons.arrow_forward),
                 ],
               ),
@@ -386,10 +162,7 @@ class _FriendEventListState extends State<FriendEventList> {
           );
         },
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: _addFriendEvent,
-      //   child: Icon(Icons.add),
-      // ),
+
     );
   }
 }

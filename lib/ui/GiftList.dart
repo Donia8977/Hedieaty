@@ -83,19 +83,12 @@ class _GiftListPageState extends State<GiftListPage> {
 
 
 
-
-  // Future<void> deleteGift(int index) async {
-  //   final giftToDelete = Gift.fromMap(gifts[index]);
-  //   await _dbHelper.deleteGift(giftToDelete);
-  //   fetchGifts(); // Refresh the list
-  // }
-
   Future<void> deleteGifts(int index) async {
     final giftToDelete = gifts[index];
     // await _dbHelper.deleteGift(giftToDelete);
     await fireStoreHelper.deleteGift(giftToDelete.id!);
     print('Gift deleted from Firestore.');
-    fetchGifts(widget.eventId); // Refresh the list
+    fetchGifts(widget.eventId);
   }
 
   Color getGiftColor(String status) {
@@ -109,13 +102,6 @@ class _GiftListPageState extends State<GiftListPage> {
     }
   }
 
-  // Future<void> updateGiftStatus(int index, String status) async {
-  //   final updatedGift = gifts[index];
-  //   // updatedGift.status = status;
-  //   updatedGift.updateStatus(status);
-  //   await _dbHelper.updateGift(updatedGift);
-  //   fetchGifts(widget.eventId); // Refresh the list
-  // }
 
   Future<void> updateGiftStatus(int index, String newStatus) async {
     final Gift giftToUpdate = gifts[index];
@@ -162,11 +148,6 @@ class _GiftListPageState extends State<GiftListPage> {
       ),
     );
 
-    // if (result != null) {
-    //   setState(() {
-    //     gifts.add(result);
-    //   });
-    // }
 
     if (result != null) {
       fetchGifts(widget.eventId);
@@ -205,10 +186,6 @@ class _GiftListPageState extends State<GiftListPage> {
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              // onPressed: () {
-              //   editGift(index, nameController.text, categoryController.text);
-              //   Navigator.pop(context);
-              // },
 
               onPressed: () async {
                 final gift = gifts[index];
@@ -242,12 +219,12 @@ class _GiftListPageState extends State<GiftListPage> {
         return AlertDialog(
           title: Text('Add New Gift'),
           content: Form(
-            key: _formKey, // Assign the form key
+            key: _formKey,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Name Field Validation
+
                   TextFormField(
                     controller: nameController,
                     decoration: InputDecoration(labelText: 'Name'),
@@ -260,7 +237,6 @@ class _GiftListPageState extends State<GiftListPage> {
                   ),
                   SizedBox(height: 10),
 
-                  // Category Field Validation
                   TextFormField(
                     controller: categoryController,
                     decoration: InputDecoration(labelText: 'Category'),
@@ -272,11 +248,9 @@ class _GiftListPageState extends State<GiftListPage> {
                     },
                   ),
                   SizedBox(height: 10),
-
-                  // Price Field Validation
                   TextFormField(
                     controller: priceController,
-                    keyboardType: TextInputType.number, // Number input only
+                    keyboardType: TextInputType.number,
                     decoration: InputDecoration(labelText: 'Price'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -306,13 +280,12 @@ class _GiftListPageState extends State<GiftListPage> {
             ElevatedButton(
               onPressed: () {
                 if (_formKey.currentState?.validate() ?? false) {
-                  // Form is valid, proceed to add gift
                   final String name = nameController.text.trim();
                   final String category = categoryController.text.trim();
                   final double price = double.parse(priceController.text.trim());
 
-                  addGift(name, category, price); // Call addGift function
-                  Navigator.pop(context); // Close dialog
+                  addGift(name, category, price);
+                  Navigator.pop(context);
                 } else {
                   print("Form contains errors, please correct them.");
                 }
@@ -334,17 +307,8 @@ class _GiftListPageState extends State<GiftListPage> {
       ),
     );
 
-    // if (updatedGift != null) {
-    //   // Update the gift in the local list
-    //   setState(() {
-    //     final index = gifts.indexWhere((g) => g.id == updatedGift['id']);
-    //     if (index != -1) {
-    //       gifts[index] = Gift.fromMap(updatedGift);
-    //     }
-    //   });
-    // }
     if (updatedGift != null) {
-      await fetchGifts(widget.eventId); // Refresh the list to include updates
+      await fetchGifts(widget.eventId);
     }
   }
 

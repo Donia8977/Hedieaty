@@ -43,6 +43,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
     _loadGifts();
   }
 
+
   Future<void> _loadGifts() async {
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -67,7 +68,6 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
             print("Skipping gift with empty name: ${doc.id}");
             return null;
           }
-
           if (data['price'] == null || data['price'].toString().trim().isEmpty) {
             print("Skipping gift with invalid price: ${doc.id}");
             return null;
@@ -77,11 +77,10 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
           ?[currentUser.uid] ??
               'Available';
 
-          data['status'] = userStatus;
-
           return Gift.fromMap({
             ...data,
             'id': doc.id,
+            'status': userStatus,
           });
         })
             .where((gift) => gift != null)
@@ -89,7 +88,7 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
             .toList();
       });
 
-      print("Gifts loaded successfully for user ${currentUser.uid}.");
+      print("Gifts loaded successfully for friend ${widget.friendId}.");
     } catch (e) {
       print("Error loading gifts: $e");
     }
@@ -174,6 +173,10 @@ class _FriendgiftlistState extends State<Friendgiftlist> {
       });
 
       print("Gift status updated to '$newStatus' for user ${currentUser.uid}.");
+
+      setState(() {
+        gifts[index].status = newStatus;
+      });
 
       if (newStatus == 'Available' || newStatus == 'Purchased') {
         final querySnapshot = await FirebaseFirestore.instance

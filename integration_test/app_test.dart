@@ -1,223 +1,16 @@
-//
-// import 'package:firebase_core/firebase_core.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_test/flutter_test.dart';
-// import 'package:hedieaty/models/Friend.dart';
-// import 'package:hedieaty/ui/EventListPage.dart';
-// import 'package:hedieaty/ui/Sign_in.dart';
-// import 'package:hedieaty/ui/Sign_up.dart';
-// import 'package:integration_test/integration_test.dart';
-// import 'package:mocktail/mocktail.dart';
-// import 'package:hedieaty/main.dart' ;
-// import 'package:firebase_auth/firebase_auth.dart';
-//
-// class MockFirebaseAuth extends Mock implements FirebaseAuth {}
-//
-// class MockUserCredential extends Mock implements UserCredential {}
-//
-// class MockUser extends Mock implements User {}
-//
-// void main() async {
-//   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-//
-//   await Firebase.initializeApp();
-//
-//   final mockFirebaseAuth = MockFirebaseAuth();
-//   final mockUserCredential = MockUserCredential();
-//   final mockUser = MockUser();
-//
-//   group('Sign-In to Sign-Up to HomePage Integration Test', () {
-//     setUp(() {
-//
-//       when(() => mockFirebaseAuth.createUserWithEmailAndPassword(
-//         email: any(named: 'email'),
-//         password: any(named: 'password'),
-//       )).thenAnswer((_) async => mockUserCredential);
-//
-//       when(() => mockFirebaseAuth.signInWithEmailAndPassword(
-//         email: any(named: 'email'),
-//         password: any(named: 'password'),
-//       )).thenAnswer((_) async => mockUserCredential);
-//
-//       when(() => mockUserCredential.user).thenReturn(mockUser);
-//       when(() => mockUser.uid).thenReturn('mockUid');
-//       when(() => mockUser.email).thenReturn('test_user@example.com');
-//
-//       when(() => mockFirebaseAuth.currentUser).thenReturn(mockUser);
-//
-//     });
-//
-//     testWidgets(
-//         'Navigate from Sign-In to Sign-Up and verify empty friend list state',
-//             (WidgetTester tester) async {
-//
-//           // Launch the app
-//           await tester.pumpWidget(
-//             MaterialApp(
-//               debugShowCheckedModeBanner: false,
-//               title: 'Hedieaty',
-//               initialRoute: '/sign_in',
-//               routes: {
-//                 '/home': (context) => HomePage(),
-//                 '/sign_in': (context) => Sign_in(),
-//                 '/sign_up': (context) => Sign_up(),
-//               },
-//             ),
-//           );
-//
-//           await tester.pumpAndSettle();
-//
-//           expect(find.text('Welcome to Hedieatak'), findsOneWidget);
-//           expect(find.text('Sign in'), findsOneWidget);
-//
-//           await tester.tap(find.text('Sign up'));
-//           await tester.pumpAndSettle();
-//
-//           expect(find.text("Let's Create an account"), findsOneWidget);
-//
-//           final testEmail =
-//               'test_user_${DateTime.now().millisecondsSinceEpoch}@example.com';
-//
-//           await tester.enterText(find.bySemanticsLabel('UserName'), 'test_user');
-//           await tester.enterText(find.bySemanticsLabel('Email'), testEmail);
-//           await tester.enterText(find.bySemanticsLabel('Password'), 'password123');
-//
-//           await tester.tap(find.text('Sign up'));
-//           await tester.pumpAndSettle();
-//
-//           expect(find.byType(HomePage), findsOneWidget);
-//           expect(find.text('No friends found. Add a friend to get started!'),
-//               findsOneWidget);
-//
-//          // expect(find.text('Hedieaty'), findsOneWidget);
-//           expect(find.text('Create Your Own Event/List'), findsOneWidget);
-//         });
-//
-//     testWidgets('HomePage: Add Friend manually', (WidgetTester tester) async {
-//
-//       await tester.pumpWidget(
-//         MaterialApp(
-//           debugShowCheckedModeBanner: false,
-//           home: HomePage(),
-//         ),
-//       );
-//
-//       await tester.pumpAndSettle();
-//
-//      // expect(find.text('Hedieaty'), findsOneWidget);
-//       expect(find.byType(HomePage), findsOneWidget);
-//
-//       await tester.tap(find.byType(FloatingActionButton));
-//       await tester.pumpAndSettle();
-//
-//       expect(find.text('Add Friend'), findsOneWidget);
-//
-//       await tester.enterText(find.bySemanticsLabel('Name'), 'John Doe');
-//       await tester.enterText(find.bySemanticsLabel('Phone Number'), '1234567890');
-//       await tester.enterText(find.bySemanticsLabel("Friend's Email"), 'johndoe@gmail.com');
-//
-//
-//       await tester.tap(find.text('Add'));
-//       await tester.pumpAndSettle();
-//
-//       expect(find.text('John Doe'), findsOneWidget);
-//       expect(find.text('No Upcoming Events'), findsOneWidget);
-//     });
-//
-//     testWidgets('HomePage: Verify friend list displays correctly',
-//             (WidgetTester tester) async {
-//           final mockFriends = [
-//             Friend(
-//               friendId: 'friend1',
-//               name: 'Jane Doe',
-//               profilePic: 'images/male_iocn.png',
-//               upcomingEvents: 2,
-//               userId: 'mockUid',
-//               gender: 'female',
-//             ),
-//             Friend(
-//               friendId: 'friend2',
-//               name: 'John Smith',
-//               profilePic: 'images/3430601_avatar_female_normal_woman_icon.png',
-//               upcomingEvents: 0,
-//               userId: 'mockUid',
-//               gender: 'male',
-//             ),
-//           ];
-//
-//           await tester.pumpWidget(MockHomePage(mockFriends: mockFriends));
-//           await tester.pumpAndSettle();
-//
-//           // Verify the friends list displays correctly
-//           expect(find.text('Jane Doe'), findsOneWidget);
-//           expect(find.text('John Smith'), findsOneWidget);
-//           expect(find.text('Upcoming Events: 2'), findsOneWidget);
-//           expect(find.text('No Upcoming Events'), findsOneWidget);
-//         });
-//   });
-// }
-//
-// class MockHomePage extends StatelessWidget {
-//   final List<Friend> mockFriends;
-//
-//   MockHomePage({required this.mockFriends});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       home: Scaffold(
-//         appBar: AppBar(title: Text('Hedieaty')),
-//         body: mockFriends.isEmpty
-//             ? Center(
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               Text('No friends found. Add a friend to get started!'),
-//             ],
-//           ),
-//         )
-//             : ListView.builder(
-//           itemCount: mockFriends.length,
-//           itemBuilder: (context, index) {
-//             final friend = mockFriends[index];
-//             return ListTile(
-//               title: Text(friend.name),
-//               subtitle: Text(friend.upcomingEvents > 0
-//                   ? "Upcoming Events: ${friend.upcomingEvents}"
-//                   : "No Upcoming Events"),
-//             );
-//           },
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
 
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hedieaty/controllers/Auth.dart';
 import 'package:hedieaty/ui/Sign_in.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 import 'package:hedieaty/main.dart';
+import 'package:hedieaty/ui/FriendEventList.dart';
 
-// class MockFlutterLocalNotificationsPlugin extends Mock
-//     implements FlutterLocalNotificationsPlugin {
-// //   @override
-// //   Future<void> show(
-// //       int id,
-// //       String? title,
-// //       String? body,
-// //       NotificationDetails? notificationDetails, {
-// //         String? payload,
-// //       }) {
-// //     return Future.value();
-// //   }
-// // }
 
 class MockFlutterLocalNotificationsPlugin extends Mock
     implements FlutterLocalNotificationsPlugin {
@@ -229,159 +22,178 @@ class MockFlutterLocalNotificationsPlugin extends Mock
       NotificationDetails? notificationDetails, {
         String? payload,
       }) {
-    return Future.value();
+    return super.noSuchMethod(
+      Invocation.method(
+        #show,
+        [id, title, body, notificationDetails],
+        {#payload: payload},
+      ),
+      returnValue: Future.value(),
+      returnValueForMissingStub: Future.value(),
+    );
   }
 }
 
 
+class MockMyAuth extends Mock implements MyAuth {}
 
-  void main() async {
-    // Initialize the integration test binding
-  //   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+void main() async {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  late MockFlutterLocalNotificationsPlugin mockNotifications;
+
+  setUp(() {
+    mockNotifications = MockFlutterLocalNotificationsPlugin();
+
+    when(mockNotifications.show(
+      0,
+      any,
+      any,
+      any,
+      payload: anyNamed('payload'),
+    )).thenAnswer((_) async => Future.value());
+  });
+
+
   //
-  //   await Firebase.initializeApp();
+  // testWidgets('Add Friend and Navigate to Gifts', (WidgetTester tester) async {
+  //   // Wrap the app with MaterialApp
+  //   await tester.pumpWidget(MaterialApp(home: HomePage(key: Key('homePage'))));
   //
-  //   // late MockFlutterLocalNotificationsPlugin mockNotifications;
-  //   //
-  //   // setUp(() {
-  //   //   mockNotifications = MockFlutterLocalNotificationsPlugin();
-  //   // });
+  //   // Step 1: Verify the HomePage is loaded
+  //   expect(find.byKey(const Key('homePage')), findsOneWidget);
   //
+  //   // Step 2: Open the Add Friend dialog
+  //   await tester.tap(find.byIcon(Icons.person_add));
+  //   await tester.pumpAndSettle();
   //
-  //   testWidgets("Sign-in page integration test", (WidgetTester tester) async {
-  //     // Mock the local notifications plugin
-  //     await tester.pumpWidget(
-  //       MaterialApp(
-  //         home: HomePage(),
-  //       ),
-  //     );
-
-  //     await tester.pumpAndSettle();
-
-  //     final emailField = find.byType(TextFormField).at(0);
-  //     final passwordField = find.byType(TextFormField).at(1);
-
-  //     await tester.enterText(emailField, "moamen3@gmail.com");
-  //     await tester.enterText(passwordField, "moamen!123!.");
-
-  //     final signInButton = find.text("Sign in");
-  //     await tester.tap(signInButton);
+  //   // Verify Add Friend dialog appears
+  //   expect(find.text('Add Friend'), findsOneWidget);
   //
-  //     await tester.pumpAndSettle();
-
-  //   //  expect(find.text('Welcome to Hedieatak'), findsNothing);
-  //     expect(find.text('Hedieaty'), findsOneWidget);
-  //     // final errorMessage = find.text("Invalid credentials");
-  //     // if (errorMessage
-  //     //     .evaluate()
-  //     //     .isNotEmpty) {
-  //     //   print("Sign-in failed: Invalid credentials.");
-  //     // } else {
-  //     //   print("Sign-in successful: Navigated to Home Page.");
-  //     // }
-
-  //     final addFriendButton = find.byIcon(Icons.person_add);
-  //     await tester.tap(addFriendButton);
-  //     await tester.pumpAndSettle();
-
-  //     final nameField = find.byType(TextField).at(0);
-  //     final phoneField = find.byType(TextField).at(1);
-  //     final emailFieldFriend = find.byType(TextField).at(2);
+  //   // Step 3: Enter friend details
+  //   await tester.enterText(find.bySemanticsLabel('Name'), 'moamen3');
+  //   await tester.enterText(find.bySemanticsLabel('Phone Number'), '01096542213');
+  //   await tester.enterText(find.bySemanticsLabel("Friend's Email"), 'moamen3@gmail.com');
   //
-  //     await tester.enterText(nameField, 'farah3');
-  //     await tester.enterText(phoneField, '01096542245');
-  //     await tester.enterText(emailFieldFriend, 'farah3@gmail.com');
+  //   // Step 4: Confirm adding the friend
+  //   await tester.tap(find.text('Add'));
+  //   await tester.pumpAndSettle();
   //
-  //     final addFriendDialogButton = find.text('Add');
-  //     await tester.tap(addFriendDialogButton);
-  //     await tester.pumpAndSettle();
+  //   // Verify friend is added and displayed in the list
+  //   expect(find.text('moamen3'), findsOneWidget);
   //
-  //    // expect(find.text('John Doe'), findsOneWidget);
-
-  //     final moamen3Tile = find.widgetWithText(ListTile, 'moamen3');
-  //     expect(moamen3Tile, findsOneWidget);
-
-  //     final forwardButton = find.descendant(
-  //       of: moamen3Tile,
-  //       matching: find.byIcon(Icons.arrow_forward),
-  //     );
-  //     await tester.tap(forwardButton);
-  //     await tester.pumpAndSettle();
+  //   // Step 5: Navigate to FriendEventList
+  //   await tester.tap(find.byIcon(Icons.arrow_forward).first);
+  //   await tester.pumpAndSettle();
   //
-  //     expect(find.text('Events for moamen3'), findsOneWidget);
+  //   // Verify navigation to FriendEventList
+  //   expect(find.text('Events for moamen3'), findsOneWidget);
   //
-  //     //coffe spot makan gdid
+  //   // Step 6: Verify the list of events and tap the forward arrow for a specific event
+  //   expect(find.byType(ListView), findsOneWidget);
+  //   await tester.tap(find.byIcon(Icons.arrow_forward).first);
+  //   await tester.pumpAndSettle();
   //
-  //     final coffeSpotTitle = find.widgetWithText(ListTile, 'coffe spot makan gdid');
-  //     expect(coffeSpotTitle, findsOneWidget);
+  //   // Verify navigation to FriendGiftList
+  //   expect(find.text('Friend Gifts'), findsOneWidget);
+  //
+  //   // Step 7: Pledge a gift
+  //   expect(find.byType(ListView), findsOneWidget);
+  //
+  //   // Select the dropdown and choose "Pledged"
+  //   await tester.tap(find.byType(DropdownButton).first);
+  //   await tester.pumpAndSettle();
+  //   await tester.tap(find.text('Pledged').last);
+  //   await tester.pumpAndSettle();
+  //
+  //   // Verify the gift status is updated to "Pledged"
+  //   expect(find.text('Pledged'), findsWidgets);
+  // });
 
-  //     final forwardEventButton = find.descendant(
-  //       of: coffeSpotTitle,
-  //       matching: find.byIcon(Icons.arrow_forward),
-  //     );
-  //     await tester.tap(forwardEventButton);
-  //     await tester.pumpAndSettle();
-  //   });
-  // }
+  // testWidgets('Sign In, Add Friend and Navigate to Gifts', (WidgetTester tester) async {
+  //   // Wrap the app with MaterialApp and simulate the sign-in flow
+  //   await tester.pumpWidget(MaterialApp(home: Sign_in(key: Key('signInPage'))));
 
-    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp();
+  testWidgets('Sign In navigates to HomePage', (WidgetTester tester) async {
 
-    late MockFlutterLocalNotificationsPlugin mockNotifications;
+    final mockAuth = MockMyAuth();
 
-      setUp(() {
-        mockNotifications = MockFlutterLocalNotificationsPlugin();
-      });
+    myAuth = mockAuth;
+    when(mockAuth.sign_in(any, any)).thenAnswer((_) async => true);
+
+    await tester.pumpWidget(MaterialApp(
+      initialRoute: '/sign_in',
+      routes: {
+        '/home': (context) => HomePage(key: Key('homePage')),
+        '/sign_in': (context) => Sign_in(key: Key('signInPage')),
+      },
+    ));
+
+    expect(find.byKey(const Key('signInPage')), findsOneWidget);
+
+    await tester.enterText(find.byKey(Key('emailField')), 'farah4gmail.com');
+    await tester.enterText(find.byKey(Key('passwordField')), 'farah!123!.');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    await tester.pump(Duration(seconds: 1));
+
+    expect(find.textContaining('Enter a valid email'), findsOneWidget);
+
+    await tester.enterText(find.byKey(Key('emailField')), 'farah4@gmailcom.');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    await tester.pump(Duration(seconds: 1));
+
+    expect(find.textContaining('Enter a valid email'), findsOneWidget);
+
+    await tester.enterText(find.byKey(Key('emailField')), 'farah4@gmail.com');
+    await tester.enterText(find.byKey(Key('passwordField')), 'farah!123!.');
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    await tester.pump(Duration(seconds: 1));
+
+    // expect(find.byKey( Key('homePage')), findsOneWidget);
+    //
+    //   await tester.tap(find.byIcon(Icons.person_add));
+    //   await tester.pumpAndSettle();
+    //
+    //   expect(find.text('Add Friend'), findsOneWidget);
+    //
+    //   await tester.enterText(find.bySemanticsLabel('Name'), 'moamen3');
+    //   await tester.enterText(find.bySemanticsLabel('Phone Number'), '01096542213');
+    //   await tester.enterText(find.bySemanticsLabel("Friend's Email"), 'moamen3@gmail.com');
+    //
+    //   await tester.tap(find.text('Add'));
+    //   await tester.pumpAndSettle();
+    //
+    //   expect(find.text('moamen3'), findsOneWidget);
+    //
+    //   await tester.tap(find.byIcon(Icons.arrow_forward).first);
+    //   await tester.pumpAndSettle();
+    //
+    //   expect(find.text('Events for moamen3'), findsOneWidget);
+    //
+    //   expect(find.byType(ListView), findsOneWidget);
+    //   await tester.tap(find.byIcon(Icons.arrow_forward).first);
+    //   await tester.pumpAndSettle();
+    //
+    //   expect(find.text('Friend Gifts'), findsOneWidget);
+    //
+    //   expect(find.byType(ListView), findsOneWidget);
+    //
+    //   await tester.tap(find.byType(DropdownButton).first);
+    //   await tester.pumpAndSettle();
+    //   await tester.tap(find.text('Pledged').last);
+    //   await tester.pumpAndSettle();
+    //
+    //   expect(find.text('Pledged'), findsWidgets);
+    // });
+    //
+    //
 
 
+  });
 
-
-    testWidgets('Add Friend and Navigate to Gifts', (WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(home: HomePage(key: Key('homePage'))));
-
-      expect(find.byKey(const Key('homePage')), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.person_add));
-      await tester.pumpAndSettle();
-      expect(find.text('Add Friend'), findsOneWidget);
-
-      await tester.enterText(find.bySemanticsLabel('Name'), 'moamen3');
-      await tester.enterText(find.bySemanticsLabel('Phone Number'), '01096542213');
-      await tester.enterText(find.bySemanticsLabel("Friend's Email"), 'moamen3@gmail.com');
-
-      await tester.tap(find.text('Add'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('moamen3'), findsOneWidget);
-
-      await tester.tap(find.byIcon(Icons.arrow_forward).first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Events for moamen3'), findsOneWidget);
-
-      expect(find.byType(ListView), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.arrow_forward).first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Friend Gifts'), findsOneWidget);
-      
-      expect(find.byType(ListView), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.arrow_forward).first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Friend Gifts'), findsOneWidget);
-
-      expect(find.byType(ListView), findsOneWidget);
-
-      await tester.tap(find.byType(DropdownButton).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Pledged').last);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Pledged'), findsWidgets);
-    });
-
-
-
-
-
-  }
+}

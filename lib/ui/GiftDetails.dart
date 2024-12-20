@@ -75,10 +75,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
 
 
   Future<void> _saveGift() async {
-    // if (nameController.text.isNotEmpty &&
-    //     descriptionController.text.isNotEmpty &&
-    //     categoryController.text.isNotEmpty &&
-    //     priceController.text.isNotEmpty) {
+
     if (_formKey.currentState?.validate() ?? false) {
 
       String? base64Image;
@@ -144,8 +141,6 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             [
               _buildMenuItem('Home', '/home'),
               _buildMenuItem('Event List', '/eventList'),
-              // _buildMenuItem('Gift List', '/giftList'),
-              // _buildMenuItem('Gift Details', '/giftDetails'),
               _buildMenuItem('Profile', '/profile'),
               _buildMenuItem('My Pledged Gifts', '/pledgedGifts'),
             ],
